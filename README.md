@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Status](https://img.shields.io/badge/Status-In%20Development-orange)
 
-> A model-free reinforcement learning agent that solves the Gymnasium Taxi-v3 environment using Q-Learning, Deep Q-Network, and brute-force baselines. Epitech T-AIA-902 project.
+> A model-free reinforcement learning agent that solves the Gymnasium Taxi-v3 environment using Q-Learning, SARSA, and brute-force baselines. Epitech T-AIA-902 project.
 
 ## Table of Contents
 
@@ -21,6 +21,7 @@
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [Team](#team)
+- [References](#references)
 - [License](#license)
 
 ## About
@@ -32,19 +33,22 @@ Taxi Driver solves the classic **Taxi-v3** discrete control problem from Gymnasi
 - **Action space:** 6 actions (North, South, East, West, Pickup, Dropoff)
 - **Rewards:** +20 for successful dropoff, -1 per step, -10 for illegal pickup/dropoff
 
-The project implements multiple RL algorithms, compares them against a brute-force baseline, and produces comprehensive benchmark reports demonstrating that a fine-tuned RL agent solves the problem in ~13 steps vs ~350 for random exploration.
+The project implements multiple RL algorithms (Q-Learning, SARSA), compares them against a brute-force baseline, and produces comprehensive benchmark reports demonstrating that a fine-tuned RL agent solves the problem in ~13 steps vs ~350 for random exploration.
 
 ## Features
 
 **Core Algorithms**
 - Q-Learning agent with configurable hyperparameters (alpha, gamma, epsilon, decay)
-- Deep Q-Network (DQN) agent with experience replay and target network
+- SARSA on-policy agent for comparison with off-policy Q-Learning
 - Brute-force random baseline for comparison
 - Monte Carlo first-visit agent (optional comparison)
 
+**Extensions (Bonus)**
+- Deep Q-Network (DQN) agent with experience replay and target network
+
 **Execution Modes**
-- **User mode** — interactively tune algorithm parameters and observe training
-- **Time-limited mode** — train and solve using pre-optimized parameters
+- **Tuning mode** — interactively tune algorithm parameters and observe training
+- **Optimal mode** — train and solve using pre-optimized parameters
 
 **Analysis & Benchmarking**
 - Multi-algorithm comparison framework (BruteForce vs Q-Learning vs DQN)
@@ -60,6 +64,7 @@ The project implements multiple RL algorithms, compares them against a brute-for
 
 **Bonus**
 - Extended 2-passenger environment with route optimization
+- TrackMania deep RL extension (continuous state/action space with PPO/SAC via Stable-Baselines3)
 
 ## Getting Started
 
@@ -85,12 +90,12 @@ python -m src.main train --algorithm qlearning --episodes 100 --test-episodes 10
 
 ## Usage
 
-### User Mode
+### Tuning Mode
 
 Interactively set algorithm parameters:
 
 ```bash
-python -m src.main train --mode user \
+python -m src.main train --mode tuning \
     --algorithm qlearning \
     --alpha 0.1 \
     --gamma 0.99 \
@@ -100,20 +105,20 @@ python -m src.main train --mode user \
     --test-episodes 100
 ```
 
-### Time-Limited Mode
+### Optimal Mode
 
 Use pre-optimized parameters:
 
 ```bash
-python -m src.main train --mode timed --episodes 5000 --test-episodes 100
+python -m src.main train --mode optimal --episodes 5000 --test-episodes 100
 ```
 
 ### CLI Flags
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--mode` | Execution mode (`user` / `timed`) | `user` |
-| `--algorithm` | Algorithm (`qlearning` / `dqn` / `bruteforce` / `montecarlo`) | `qlearning` |
+| `--mode` | Execution mode (`tuning` / `optimal`) | `tuning` |
+| `--algorithm` | Algorithm (`qlearning` / `sarsa` / `bruteforce` / `montecarlo` / `dqn`) | `qlearning` |
 | `--episodes` | Number of training episodes | `10000` |
 | `--test-episodes` | Number of evaluation episodes | `100` |
 | `--alpha` | Learning rate | `0.1` |
@@ -136,11 +141,13 @@ Taxi-Driver/
 │   │   ├── base_agent.py        # Abstract base agent (ABC)
 │   │   ├── brute_force_agent.py # Random action baseline
 │   │   ├── q_learning_agent.py  # Tabular Q-Learning
-│   │   ├── dqn_agent.py         # Deep Q-Network
+│   │   ├── sarsa_agent.py        # SARSA on-policy
+│   │   ├── dqn_agent.py         # Deep Q-Network (extension)
 │   │   └── monte_carlo_agent.py # Monte Carlo first-visit
 │   ├── environments/
 │   │   ├── taxi_wrapper.py      # Gymnasium Taxi-v3 wrapper
-│   │   └── multi_passenger_env.py # 2-passenger extension (bonus)
+│   │   ├── multi_passenger_env.py # 2-passenger extension (bonus)
+│   │   └── trackmania_wrapper.py  # TrackMania wrapper (bonus deep RL)
 │   ├── training/
 │   │   ├── trainer.py           # Generic training pipeline
 │   │   └── callbacks.py         # Logging, early stopping
@@ -161,7 +168,7 @@ Taxi-Driver/
 ├── results/                     # Benchmark outputs & plots
 ├── tests/                       # Unit & integration tests
 ├── docs/
-│   ├── project.pdf              # Epitech project specification
+│   ├── Epitech-TD.pdf           # Epitech project specification
 │   ├── CADRAGE.md               # Project framing document
 │   ├── ARCHITECTURE.md          # Software architecture
 │   └── BACKLOG.md               # Product backlog (WSJF)
@@ -183,9 +190,25 @@ Q(s,a) <- Q(s,a) + alpha * [r + gamma * max_a' Q(s',a') - Q(s,a)]
 
 Ideal for Taxi-v3's small discrete state space (500 states x 6 actions). Converges in ~2,000-5,000 episodes to near-optimal performance (~13 steps/episode).
 
-### Deep Q-Network (DQN)
+### SARSA (On-Policy)
 
-Neural network approximation of Q-values with experience replay and target network stabilization. Included for comparative analysis — demonstrates how DQN handles discrete environments vs. tabular methods.
+On-policy TD control using a state-action value table. Update rule:
+
+```
+Q(s,a) <- Q(s,a) + alpha * [r + gamma * Q(s',a') - Q(s,a)]
+```
+
+where `a'` is the action **actually taken** by the policy (not the greedy max). SARSA learns from its own exploration behavior, making it more conservative than Q-Learning. It is more stable under high exploration rates but may converge more slowly.
+
+Key difference with Q-Learning: SARSA learns with its mistakes, Q-Learning learns as if it never made any.
+
+### Deep Q-Network (DQN) — Extension
+
+*(Bonus extension)* Neural network approximation of Q-values with experience replay and target network stabilization. Included for comparative analysis — demonstrates how DQN handles discrete environments vs. tabular methods.
+
+### PPO / SAC -- TrackMania Extension
+
+*(Bonus extension)* For the TrackMania environment, deep RL algorithms from **Stable-Baselines3** are used. **PPO** (Proximal Policy Optimization) and **SAC** (Soft Actor-Critic) handle the continuous observation space (LIDAR vectors) and continuous action space (acceleration, steering) that tabular methods cannot address. This extension demonstrates the transition from discrete RL (Taxi-v3) to continuous deep RL.
 
 ### Brute-Force Baseline
 
@@ -231,6 +254,7 @@ Sample outputs are saved to `results/`.
 | pytest | Testing framework |
 | ruff / black | Linting & formatting |
 | mypy | Static type checking |
+| Stable-Baselines3 | Deep RL algorithms (PPO, SAC) for TrackMania extension |
 | GitHub Actions | CI/CD pipeline |
 
 ## Documentation
@@ -240,7 +264,7 @@ Sample outputs are saved to `results/`.
 | [CADRAGE.md](docs/CADRAGE.md) | Project framing — process, user stories, metrics, risks |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Software architecture with Mermaid diagrams |
 | [BACKLOG.md](docs/BACKLOG.md) | Product backlog with WSJF prioritization |
-| [project.pdf](docs/project.pdf) | Epitech project specification |
+| [Epitech-TD.pdf](docs/Epitech-TD.pdf) | Epitech project specification |
 
 ## Contributing
 
@@ -259,6 +283,14 @@ Sample outputs are saved to `results/`.
 | Duncan Carbonnier | [@DuncanCbr](https://github.com/DuncanCbr) | — |
 | Emeric Legendre | [@Macfreeze](https://github.com/Macfreeze) | — |
 | Marin Chevalier | — | — |
+
+## References
+
+- Sutton, R. S., & Barto, A. G. (2018). *Reinforcement Learning: An Introduction* (2nd ed.). MIT Press.
+- Watkins, C. J. C. H. (1989). *Learning from Delayed Rewards*. PhD thesis, Cambridge University.
+- Rummery, G. A., & Niranjan, M. (1994). *On-line Q-learning using connectionist systems*. Technical Report CUED/F-INFENG/TR 166, Cambridge University.
+- Mnih, V., et al. (2015). Human-level control through deep reinforcement learning. *Nature*, 518(7540), 529-533.
+- Schulman, J., et al. (2017). Proximal Policy Optimization Algorithms. *arXiv:1707.06347*.
 
 ## License
 

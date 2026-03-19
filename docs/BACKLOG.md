@@ -44,6 +44,7 @@ Toutes les tâches triées par WSJF décroissant :
 | T-3.1.1 | Classe abstraite BaseAgent | 15.0 | P0 | Agents RL |
 | T-3.1.2 | Implémentation BruteForceAgent | 14.0 | P0 | Agents RL |
 | T-6.1.3 | Mode time-limited | 13.0 | P0 | Interface CLI |
+| T-3.5.2 | Comparaison SARSA vs Q-Learning | 13.0 | P0 | Agents RL |
 | T-1.1.1 | Structure du répertoire | 12.0 | P0 | Infrastructure |
 | T-1.1.2 | Setup Poetry | 11.0 | P0 | Infrastructure |
 | T-4.2.2 | Affichage d'épisodes aléatoires | 11.0 | P0 | Pipeline |
@@ -59,11 +60,12 @@ Toutes les tâches triées par WSJF décroissant :
 | T-8.1.1 | README.md complet | 9.0 | P1 | Documentation |
 | T-1.2.3 | Pre-commit hooks | 8.0 | P1 | Infrastructure |
 | T-3.1.3 | Tests unitaires agents de base | 8.0 | P1 | Agents RL |
-| T-3.3.4 | Sauvegarde/chargement poids DQN | 8.0 | P1 | Agents RL |
+| T-8.1.4 | Rapport scientifique avec hypothèses | 8.0 | P1 | Documentation |
 | T-3.4.2 | Comparaison MC vs Q-Learning | 8.0 | P1 | Agents RL |
 | T-4.2.3 | Métriques détaillées | 8.0 | P1 | Pipeline |
 | T-7.1.5 | Episode replay textuel | 8.0 | P1 | Visualisation |
 | T-3.2.1 | Q-Learning basique | 7.5 | P1 | Agents RL |
+| T-3.5.1 | SARSA basique | 7.5 | P1 | Agents RL |
 | T-4.1.1 | Classe Trainer générique | 7.0 | P1 | Pipeline |
 | T-4.2.1 | Classe Evaluator | 7.0 | P1 | Pipeline |
 | T-5.1.4 | Export résultats | 7.0 | P1 | Benchmarking |
@@ -71,17 +73,15 @@ Toutes les tâches triées par WSJF décroissant :
 | T-6.1.2 | Mode utilisateur | 6.5 | P1 | Interface CLI |
 | T-6.1.1 | Point d'entrée main.py | 6.0 | P1 | Interface CLI |
 | T-1.1.5 | Classe Config | 5.5 | P2 | Infrastructure |
-| T-3.3.1 | Réseau de neurones QNetwork | 5.5 | P2 | Agents RL |
 | T-2.2.1 | Conception espace d'états multi-passager | 5.0 | P2 | Environnements |
 | T-5.1.3 | Comparaison reward shaping | 5.0 | P2 | Benchmarking |
 | T-7.1.4 | Graphique comparatif multi-agents | 5.0 | P2 | Visualisation |
+| T-8.1.5 | État de l'art RL tabulaire | 5.0 | P2 | Documentation |
 | T-3.2.4 | Optimisation hyperparamètres Q-Learning | 4.7 | P2 | Agents RL |
 | T-1.2.1 | Pipeline CI GitHub Actions | 4.5 | P2 | Infrastructure |
 | T-2.1.3 | Support reward shaping | 4.5 | P2 | Environnements |
-| T-3.3.2 | ReplayBuffer | 4.5 | P2 | Agents RL |
 | T-5.1.1 | Sweep de paramètres | 4.3 | P2 | Benchmarking |
-| T-3.3.3 | Entraînement DQN complet | 4.3 | P2 | Agents RL |
-| T-8.1.2 | Rapport de benchmark | 4.3 | P2 | Documentation |
+| T-8.1.2 | Rapport de benchmark | 4.3 | P1 | Documentation |
 | T-3.4.1 | Monte Carlo first-visit | 4.0 | P2 | Agents RL |
 | T-7.1.3 | Heatmap Q-values | 4.0 | P2 | Visualisation |
 | T-1.2.2 | Smoke test entraînement dans CI | 3.5 | P2 | Infrastructure |
@@ -89,6 +89,14 @@ Toutes les tâches triées par WSJF décroissant :
 | T-8.1.3 | Docstrings et type hints | 3.5 | P2 | Documentation |
 | T-2.2.3 | Optimisation de route multi-passager | 3.3 | P2 | Environnements |
 | T-2.2.2 | Implémentation MultiPassengerEnv | 2.5 | P3 | Environnements |
+| T-2.3.4 | Analyse comparative Taxi-v3 vs TrackMania | 4.5 | P3 | Environnements |
+| T-2.3.1 | Recherche et setup environnement TrackMania | 4.0 | P3 | Environnements |
+| T-2.3.2 | Wrapper TrackMania Gymnasium | 2.7 | P3 | Environnements |
+| T-2.3.3 | Entraînement deep RL sur TrackMania | 2.5 | P3 | Environnements |
+| T-3.3.1 | Réseau de neurones QNetwork | 2.5 | P3 | Agents RL |
+| T-3.3.4 | Sauvegarde/chargement poids DQN | 2.5 | P3 | Agents RL |
+| T-3.3.2 | ReplayBuffer | 2.0 | P3 | Agents RL |
+| T-3.3.3 | Entraînement DQN complet | 2.0 | P3 | Agents RL |
 
 ---
 
@@ -123,11 +131,20 @@ flowchart TD
         T-2.2.2["T-2.2.2\nMultiPassengerEnv"]
         T-2.2.3["T-2.2.3\nOptimisation route"]
 
+        T-2.3.1["T-2.3.1\nSetup TrackMania"]
+        T-2.3.2["T-2.3.2\nWrapper TrackMania"]
+        T-2.3.3["T-2.3.3\nDeep RL TrackMania"]
+        T-2.3.4["T-2.3.4\nAnalyse Taxi vs TM"]
+
         T-2.1.1 --> T-2.1.2
         T-2.1.1 --> T-2.1.3
         T-2.1.1 --> T-2.2.1
         T-2.2.1 --> T-2.2.2
         T-2.2.2 --> T-2.2.3
+
+        T-2.3.1 --> T-2.3.2
+        T-2.3.2 --> T-2.3.3
+        T-2.3.3 --> T-2.3.4
     end
 
     subgraph EPIC3["EPIC 3 : Agents RL"]
@@ -144,6 +161,8 @@ flowchart TD
         T-3.3.4["T-3.3.4\nSauvegarde DQN"]
         T-3.4.1["T-3.4.1\nMonte Carlo first-visit"]
         T-3.4.2["T-3.4.2\nComparaison MC vs QL"]
+        T-3.5.1["T-3.5.1\nSARSA basique"]
+        T-3.5.2["T-3.5.2\nComparaison SARSA vs QL"]
 
         T-3.1.1 --> T-3.1.2
         T-3.1.2 --> T-3.1.3
@@ -158,6 +177,9 @@ flowchart TD
         T-3.1.1 --> T-3.4.1
         T-3.4.1 --> T-3.4.2
         T-3.2.1 --> T-3.4.2
+        T-3.1.1 --> T-3.5.1
+        T-3.5.1 --> T-3.5.2
+        T-3.2.1 --> T-3.5.2
     end
 
     subgraph EPIC4["EPIC 4 : Pipeline d'Entraînement"]
@@ -207,6 +229,8 @@ flowchart TD
         T-8.1.1["T-8.1.1\nREADME.md"]
         T-8.1.2["T-8.1.2\nRapport benchmark"]
         T-8.1.3["T-8.1.3\nDocstrings & type hints"]
+        T-8.1.4["T-8.1.4\nRapport scientifique"]
+        T-8.1.5["T-8.1.5\nÉtat de l'art RL"]
     end
 
     %% Dépendances inter-epics
@@ -239,6 +263,8 @@ flowchart TD
     T-5.1.2 --> T-8.1.2
     T-6.1.1 --> T-8.1.1
     T-7.1.4 --> T-8.1.2
+    T-3.5.1 --> T-5.1.2
+    T-2.1.1 --> T-3.5.1
 ```
 
 ---
@@ -295,6 +321,17 @@ L'environnement bonus étend Taxi-v3 pour supporter deux passagers simultanémen
 | T-2.2.2 | Implémentation MultiPassengerEnv | Implémenter la classe `MultiPassengerTaxiEnv` héritant de `gymnasium.Env`, avec gestion de 2 passagers, rewards adaptés et logique de pick-up/drop-off séquentielle. | - L'environnement respecte l'interface Gymnasium (`reset`, `step`, `render`)<br>- 2 passagers avec positions et destinations distinctes<br>- Reward positif pour chaque passager déposé correctement<br>- Pénalité pour actions illégales (pick-up/drop-off invalide)<br>- Tests unitaires sur les transitions d'état | 4 | 1 | 5 | 4 | 2.5 | T-2.2.1 | P3 |
 | T-2.2.3 | Optimisation de route multi-passager | Implémenter un algorithme d'optimisation de l'ordre de prise en charge des passagers (heuristique nearest-first ou résolution exacte pour 2 passagers). | - L'agent peut décider dynamiquement quel passager prendre en premier<br>- Comparaison des stratégies (fixed-order vs nearest-first)<br>- Mesure de la réduction moyenne du nombre de steps<br>- Résultats documentés avec graphiques | 4 | 1 | 5 | 3 | 3.3 | T-2.2.2 | P2 |
 
+### Feature 2.3 : Extension TrackMania (Bonus Deep RL)
+
+L'extension TrackMania permet d'appliquer le deep RL à un environnement radicalement différent de Taxi-v3 : espace d'états continu (LIDAR), espace d'actions continu (accélération, direction), et horizon d'épisode long. Cette extension démontre la généralisation des concepts RL au-delà du tabulaire.
+
+| ID | Titre | Description | Critères d'acceptation | BV | TC | RR | Size | WSJF | Dépendances | Tier |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T-2.3.1 | Recherche et setup environnement TrackMania | Identifier la bibliothèque d'interface (tmrl), installer, valider qu'un agent aléatoire peut interagir avec l'environnement. Documenter les observations (LIDAR) et actions (accélération, direction) disponibles. | - Bibliothèque tmrl installée et fonctionnelle<br>- Agent aléatoire exécutable sur TrackMania<br>- Documentation des espaces d'observation et d'action<br>- Prérequis système documentés (TrackMania installé, configuration réseau) | 3 | 1 | 4 | 2 | 4.0 | T-1.1.2 | P3 |
+| T-2.3.2 | Wrapper TrackMania Gymnasium | Créer un `TrackManiaEnvWrapper` standardisant l'interface Gymnasium : observations LIDAR normalisées, espace d'actions continu borné, gestion des resets et timeouts. | - Le wrapper respecte l'interface Gymnasium (reset, step, render)<br>- Observations LIDAR normalisées dans [0, 1]<br>- Actions continues bornées (accélération, direction)<br>- Gestion correcte des fins d'épisode (crash, timeout)<br>- Tests unitaires sur l'interface | 3 | 1 | 4 | 3 | 2.7 | T-2.3.1 | P3 |
+| T-2.3.3 | Entraînement deep RL sur TrackMania | Entraîner un agent PPO ou SAC (via Stable-Baselines3) sur TrackMania. Produire des courbes d'apprentissage et une analyse des comportements émergents. | - Agent PPO ou SAC fonctionnel sur TrackMania<br>- Courbes d'apprentissage (reward vs timesteps)<br>- L'agent complète au moins un tour de circuit<br>- Hyperparamètres documentés<br>- Sauvegarde du modèle entraîné | 4 | 1 | 5 | 4 | 2.5 | T-2.3.2 | P3 |
+| T-2.3.4 | Analyse comparative Taxi-v3 vs TrackMania | Rédiger une section du rapport comparant les deux environnements : complexité, temps d'entraînement, type d'algorithmes nécessaires, challenges spécifiques du continu vs discret. | - Tableau comparatif Taxi-v3 vs TrackMania<br>- Analyse des différences (discret vs continu, tabulaire vs deep)<br>- Discussion sur la transférabilité des concepts RL<br>- Graphiques comparatifs (temps de convergence, complexité)<br>- Conclusions sur l'apport du deep RL | 4 | 1 | 4 | 2 | 4.5 | T-2.3.3 | P3 |
+
 ---
 
 ## EPIC 3 : Agents RL
@@ -322,16 +359,16 @@ Le Q-Learning tabulaire est l'algorithme phare du projet. Il utilise une table Q
 | T-3.2.3 | Sauvegarde/chargement Q-table | Implémenter `save(path)` et `load(path)` pour persister la Q-table au format NumPy (`.npy`), incluant les métadonnées (épisodes, config). | - `save(path)` écrit la Q-table et les métadonnées dans un fichier `.npz`<br>- `load(path)` restaure l'agent dans son état exact<br>- Les métadonnées incluent : n_episodes, config, date<br>- Test de round-trip : save puis load donne le même agent | 3 | 3 | 3 | 1 | 9.0 | T-3.2.1 | P1 |
 | T-3.2.4 | Optimisation hyperparamètres Q-Learning | Effectuer un grid search sur les hyperparamètres clés (α, γ, ε_init, ε_decay, ε_min) et identifier la configuration optimale pour Taxi-v3. | - Grid search sur au moins 3 valeurs par paramètre<br>- Résultats enregistrés dans un fichier structuré (CSV ou JSON)<br>- Meilleure configuration identifiée avec intervalle de confiance<br>- Graphiques de sensibilité pour chaque paramètre<br>- Configuration optimale sauvée dans `configs/optimized_qlearning.yaml` | 5 | 4 | 5 | 3 | 4.7 | T-3.2.1, T-5.1.1 | P2 |
 
-### Feature 3.3 : Agent DQN
+### Feature 3.3 : Agent DQN (extension bonus)
 
 Le Deep Q-Network remplace la Q-table par un réseau de neurones, permettant la généralisation à des espaces d'états plus grands. Bien que Taxi-v3 soit tabulaire, l'implémentation DQN démontre la maîtrise des techniques de deep RL.
 
 | ID | Titre | Description | Critères d'acceptation | BV | TC | RR | Size | WSJF | Dépendances | Tier |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T-3.3.1 | Réseau de neurones QNetwork | Implémenter un réseau PyTorch `QNetwork(nn.Module)` avec couches fully-connected, prenant l'état en entrée (one-hot ou entier) et retournant les Q-values pour chaque action. | - Le réseau accepte un état (one-hot 500 ou entier encodé) en entrée<br>- Il retourne un tenseur de shape (batch_size, 6)<br>- Architecture configurable (nombre de couches, taille hidden)<br>- Activation ReLU entre les couches cachées | 4 | 3 | 4 | 2 | 5.5 | T-3.1.1 | P2 |
-| T-3.3.2 | ReplayBuffer | Implémenter un `ReplayBuffer` circulaire stockant les transitions (s, a, r, s', done) avec échantillonnage aléatoire par batch. | - Capacité maximale configurable<br>- Méthode `push(s, a, r, s', done)`<br>- Méthode `sample(batch_size)` retournant un batch aléatoire<br>- `__len__` retourne le nombre de transitions stockées<br>- Gestion correcte du dépassement de capacité (FIFO) | 3 | 3 | 3 | 2 | 4.5 | - | P2 |
-| T-3.3.3 | Entraînement DQN complet | Implémenter la boucle d'entraînement DQN avec target network (mise à jour périodique), loss MSE sur les Q-values, et optimiseur Adam. | - Target network mis à jour toutes les N étapes (configurable)<br>- Loss MSE/Huber entre Q-values prédites et cibles<br>- Optimiseur Adam avec learning rate configurable<br>- Entraînement stable convergeant vers reward > 5 en < 50 000 épisodes<br>- Gestion du warm-up (pas d'apprentissage avant buffer rempli) | 5 | 3 | 5 | 3 | 4.3 | T-3.3.1, T-3.3.2, T-2.1.1 | P2 |
-| T-3.3.4 | Sauvegarde/chargement poids DQN | Implémenter `save(path)` et `load(path)` pour persister les poids du réseau via `torch.save`/`torch.load`, incluant l'état de l'optimiseur. | - `save(path)` écrit les `state_dict` du réseau et de l'optimiseur<br>- `load(path)` restaure le réseau et l'optimiseur<br>- Les métadonnées (architecture, config, épisodes) sont incluses<br>- Compatible CPU et GPU (map_location) | 3 | 2 | 3 | 1 | 8.0 | T-3.3.3 | P1 |
+| T-3.3.1 | Réseau de neurones QNetwork | Implémenter un réseau PyTorch `QNetwork(nn.Module)` avec couches fully-connected, prenant l'état en entrée (one-hot ou entier) et retournant les Q-values pour chaque action. | - Le réseau accepte un état (one-hot 500 ou entier encodé) en entrée<br>- Il retourne un tenseur de shape (batch_size, 6)<br>- Architecture configurable (nombre de couches, taille hidden)<br>- Activation ReLU entre les couches cachées | 4 | 3 | 4 | 2 | 2.5 | T-3.1.1 | P3 |
+| T-3.3.2 | ReplayBuffer | Implémenter un `ReplayBuffer` circulaire stockant les transitions (s, a, r, s', done) avec échantillonnage aléatoire par batch. | - Capacité maximale configurable<br>- Méthode `push(s, a, r, s', done)`<br>- Méthode `sample(batch_size)` retournant un batch aléatoire<br>- `__len__` retourne le nombre de transitions stockées<br>- Gestion correcte du dépassement de capacité (FIFO) | 3 | 3 | 3 | 2 | 2.0 | - | P3 |
+| T-3.3.3 | Entraînement DQN complet | Implémenter la boucle d'entraînement DQN avec target network (mise à jour périodique), loss MSE sur les Q-values, et optimiseur Adam. | - Target network mis à jour toutes les N étapes (configurable)<br>- Loss MSE/Huber entre Q-values prédites et cibles<br>- Optimiseur Adam avec learning rate configurable<br>- Entraînement stable convergeant vers reward > 5 en < 50 000 épisodes<br>- Gestion du warm-up (pas d'apprentissage avant buffer rempli) | 5 | 3 | 5 | 3 | 2.0 | T-3.3.1, T-3.3.2, T-2.1.1 | P3 |
+| T-3.3.4 | Sauvegarde/chargement poids DQN | Implémenter `save(path)` et `load(path)` pour persister les poids du réseau via `torch.save`/`torch.load`, incluant l'état de l'optimiseur. | - `save(path)` écrit les `state_dict` du réseau et de l'optimiseur<br>- `load(path)` restaure le réseau et l'optimiseur<br>- Les métadonnées (architecture, config, épisodes) sont incluses<br>- Compatible CPU et GPU (map_location) | 3 | 2 | 3 | 1 | 2.5 | T-3.3.3 | P3 |
 
 ### Feature 3.4 : Agent Monte Carlo (optionnel)
 
@@ -341,6 +378,15 @@ L'agent Monte Carlo utilise des retours complets d'épisode pour estimer les val
 |---|---|---|---|---|---|---|---|---|---|---|
 | T-3.4.1 | Monte Carlo first-visit | Implémenter `MonteCarloAgent(BaseAgent)` avec estimation first-visit des Q-values et politique epsilon-greedy. Les mises à jour se font en fin d'épisode. | - Estimation first-visit correcte des Q-values<br>- Politique epsilon-greedy avec epsilon decay<br>- Mises à jour effectuées uniquement en fin d'épisode<br>- Stockage de l'historique de l'épisode en cours<br>- Convergence observable sur Taxi-v3 | 3 | 1 | 4 | 2 | 4.0 | T-3.1.1, T-2.1.1 | P2 |
 | T-3.4.2 | Comparaison MC vs Q-Learning | Produire une analyse comparative entre Monte Carlo et Q-Learning sur Taxi-v3 : vitesse de convergence, stabilité, performance finale. | - Entraînement MC et QL avec mêmes hyperparamètres de base<br>- Courbes d'apprentissage comparatives<br>- Analyse de la variance des retours<br>- Discussion des avantages/inconvénients de chaque méthode<br>- Résultats reproductibles avec seed fixée | 3 | 1 | 4 | 1 | 8.0 | T-3.4.1, T-3.2.1 | P1 |
+
+### Feature 3.5 : Agent SARSA
+
+L'agent SARSA (State-Action-Reward-State-Action) est l'algorithme on-policy de référence du projet. Contrairement au Q-Learning (off-policy) qui utilise la meilleure action future pour la mise à jour, SARSA utilise l'action réellement choisie par la politique courante, ce qui le rend plus conservateur et plus stable face à l'exploration.
+
+| ID | Titre | Description | Critères d'acceptation | BV | TC | RR | Size | WSJF | Dépendances | Tier |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T-3.5.1 | SARSA basique | Implémenter `SARSAAgent(BaseAgent)` avec Q-table initialisée à zéro, politique epsilon-greedy, et mise à jour on-policy : Q(s,a) += α[r + γ·Q(s',a') - Q(s,a)] où a' est l'action réellement choisie par la politique. | - Q-table de shape (500, 6) initialisée à 0<br>- Politique epsilon-greedy fonctionnelle<br>- Mise à jour SARSA correcte (on-policy, utilise a' réel et non max)<br>- Convergence vers reward moyen > 6 en < 10 000 épisodes<br>- Paramètres configurables (α, γ, ε)<br>- Stockage de l'action suivante pour la mise à jour | 5 | 5 | 5 | 2 | 7.5 | T-3.1.1, T-2.1.1 | P1 |
+| T-3.5.2 | Comparaison SARSA vs Q-Learning | Produire une analyse comparative rigoureuse entre SARSA (on-policy) et Q-Learning (off-policy) sur Taxi-v3 : vitesse de convergence, stabilité, performance finale, impact de l'exploration. Formuler des hypothèses testables et les vérifier expérimentalement. | - Entraînement SARSA et QL avec mêmes hyperparamètres de base<br>- Courbes d'apprentissage comparatives<br>- Analyse de la variance et de la stabilité<br>- Au moins 2 hypothèses formulées et testées (ex: "SARSA est plus stable", "Q-Learning converge plus vite")<br>- Discussion des avantages/inconvénients de chaque méthode<br>- Résultats reproductibles avec seed fixée | 5 | 3 | 5 | 1 | 13.0 | T-3.5.1, T-3.2.1 | P0 |
 
 ---
 
@@ -425,8 +471,10 @@ Cette epic couvre la rédaction de la documentation utilisateur et technique, ai
 | ID | Titre | Description | Critères d'acceptation | BV | TC | RR | Size | WSJF | Dépendances | Tier |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T-8.1.1 | README.md complet | Rédiger un README.md couvrant : description du projet, installation, utilisation (modes user et time-limited), structure du code, exemples de commandes et résultats attendus. | - Section installation avec prérequis<br>- Section utilisation avec exemples de commandes<br>- Description des deux modes (user, time-limited)<br>- Structure du projet documentée<br>- Exemples de résultats avec captures/graphiques<br>- Badges CI et couverture de tests | 3 | 4 | 2 | 1 | 9.0 | T-6.1.1 | P1 |
-| T-8.1.2 | Rapport de benchmark | Produire un rapport structuré présentant les résultats de benchmarking : tableaux comparatifs, graphiques, analyse des performances, recommandations. | - Tableau comparatif des agents (reward, steps, temps, succès)<br>- Graphiques de courbes d'apprentissage comparatives<br>- Analyse de l'impact des hyperparamètres<br>- Discussion des forces/faiblesses de chaque agent<br>- Recommandation de l'agent optimal pour Taxi-v3<br>- Format Markdown ou PDF | 5 | 4 | 4 | 3 | 4.3 | T-5.1.2, T-7.1.4 | P2 |
+| T-8.1.2 | Rapport de benchmark | Produire un rapport structuré présentant les résultats de benchmarking : tableaux comparatifs, graphiques, analyse des performances, recommandations. | - Tableau comparatif des agents (reward, steps, temps, succès)<br>- Graphiques de courbes d'apprentissage comparatives<br>- Analyse de l'impact des hyperparamètres<br>- Discussion des forces/faiblesses de chaque agent<br>- Recommandation de l'agent optimal pour Taxi-v3<br>- Format Markdown ou PDF | 5 | 4 | 4 | 3 | 4.3 | T-5.1.2, T-7.1.4 | P1 |
 | T-8.1.3 | Docstrings et type hints complets | Ajouter des docstrings Google-style et des type hints complets à tous les modules, classes et fonctions publiques du projet. | - 100% des fonctions/classes publiques ont une docstring<br>- Format Google-style (Args, Returns, Raises)<br>- Type hints sur toutes les signatures de fonctions<br>- mypy passe sans erreur en mode strict<br>- Exemples d'utilisation dans les docstrings des classes principales | 2 | 2 | 3 | 2 | 3.5 | Tous les modules | P2 |
+| T-8.1.4 | Rapport scientifique avec hypothèses | Rédiger un rapport suivant une démarche académique rigoureuse : formaliser le problème Taxi-v3 comme MDP, rédiger un état de l'art du RL tabulaire, formuler ≥3 hypothèses testables sur le comportement des agents (ex: impact de γ, comparaison on-policy vs off-policy, sensibilité aux hyperparamètres), décrire le protocole expérimental, présenter les résultats avec tests statistiques et analyse critique, et documenter les limites et pistes d'amélioration. | - Structure académique (intro, état de l'art, méthodo, résultats, discussion, conclusion)<br>- Formalisation MDP du problème Taxi-v3 (tuple S, A, P, R, γ)<br>- Au moins 3 hypothèses formulées et testées<br>- Protocole expérimental décrit (10 seeds, répétitions, conditions identiques)<br>- Tests statistiques (Welch/Mann-Whitney, p < 0.05) pour valider les comparaisons<br>- Résultats présentés avec graphiques et tableaux (μ ± σ)<br>- Analyse critique des résultats (confirme/infirme les hypothèses)<br>- Section limites et améliorations<br>- Références bibliographiques (≥5 sources académiques)<br>- Le rapport raconte une histoire cohérente | 5 | 3 | 4 | 2 | 8.0 | T-5.1.2, T-3.5.2 | P1 |
+| T-8.1.5 | État de l'art RL tabulaire | Rédiger une section état de l'art positionnant le projet dans le paysage du RL : RL tabulaire (Q-Learning, SARSA, Monte Carlo) vs deep RL (DQN, PPO, SAC), propriétés de convergence, trade-off exploration/exploitation. Référencer les travaux fondateurs. | - Couverture des algorithmes tabulaires (Q-Learning, SARSA, MC) et deep (DQN, PPO)<br>- Propriétés de convergence documentées<br>- Trade-off exploration/exploitation expliqué<br>- Références : Sutton & Barto (2018), Watkins (1989), Rummery & Niranjan (1994), Mnih et al. (2015)<br>- Positionnement du projet dans ce paysage | 4 | 2 | 4 | 2 | 5.0 | T-3.5.2 | P2 |
 
 ---
 
@@ -469,6 +517,7 @@ L'implémentation est organisée en 9 vagues successives. Chaque vague regroupe 
 | T-4.1.2 | TrainingHistory dataclass | P0 |
 | T-4.2.1 | Classe Evaluator | P1 |
 | T-4.2.2 | Affichage d'épisodes aléatoires | P0 |
+| T-3.5.1 | SARSA basique | P1 |
 
 **Livrable** : Q-Learning fonctionnel avec entraînement et évaluation automatisés.
 
@@ -497,21 +546,18 @@ L'implémentation est organisée en 9 vagues successives. Chaque vague regroupe 
 | T-7.1.2 | Courbe steps par épisode | P1 |
 | T-7.1.5 | Episode replay textuel | P1 |
 | T-3.2.4 | Optimisation hyperparamètres Q-Learning | P2 |
+| T-3.5.2 | Comparaison SARSA vs Q-Learning | P0 |
 
 **Livrable** : Benchmarks complets avec graphiques de performance.
 
-### Vague 6 — DQN et Mode Optimisé
-> Implémentation du deep RL et du mode time-limited.
+### Vague 6 — Mode Optimisé
+> Mode time-limited pour la production.
 
 | Tâche | Titre | Tier |
 |---|---|---|
-| T-3.3.1 | Réseau de neurones QNetwork | P2 |
-| T-3.3.2 | ReplayBuffer | P2 |
-| T-3.3.3 | Entraînement DQN complet | P2 |
-| T-3.3.4 | Sauvegarde/chargement poids DQN | P1 |
 | T-6.1.3 | Mode time-limited | P0 |
 
-**Livrable** : Agent DQN fonctionnel et mode de production optimisé.
+**Livrable** : Mode de production optimisé.
 
 ### Vague 7 — Polish
 > Fonctionnalités avancées et raffinements.
@@ -537,7 +583,7 @@ L'implémentation est organisée en 9 vagues successives. Chaque vague regroupe 
 | T-1.2.1 | Pipeline CI GitHub Actions | P2 |
 | T-1.2.2 | Smoke test entraînement dans CI | P2 |
 | T-8.1.1 | README.md complet | P1 |
-| T-8.1.2 | Rapport de benchmark | P2 |
+| T-8.1.2 | Rapport de benchmark | P1 |
 | T-8.1.3 | Docstrings et type hints | P2 |
 
 **Livrable** : Projet documenté avec CI fonctionnelle.
@@ -552,6 +598,14 @@ L'implémentation est organisée en 9 vagues successives. Chaque vague regroupe 
 | T-2.2.3 | Optimisation de route multi-passager | P2 |
 | T-3.4.1 | Monte Carlo first-visit | P2 |
 | T-3.4.2 | Comparaison MC vs Q-Learning | P1 |
+| T-3.3.1 | Réseau de neurones QNetwork (extension) | P3 |
+| T-3.3.2 | ReplayBuffer (extension) | P3 |
+| T-3.3.3 | Entraînement DQN complet (extension) | P3 |
+| T-3.3.4 | Sauvegarde/chargement poids DQN (extension) | P3 |
+| T-2.3.1 | Recherche et setup TrackMania | P3 |
+| T-2.3.2 | Wrapper TrackMania Gymnasium | P3 |
+| T-2.3.3 | Entraînement deep RL sur TrackMania | P3 |
+| T-2.3.4 | Analyse comparative Taxi-v3 vs TrackMania | P3 |
 
 **Livrable** : Fonctionnalités bonus complètes, projet finalisé.
 

@@ -35,10 +35,11 @@ L'apprentissage par renforcement est un paradigme d'apprentissage automatique da
 Les objectifs principaux du projet sont les suivants :
 
 - **Résoudre l'environnement Taxi-v3** à l'aide d'algorithmes de RL model-free épisodiques, en atteignant une performance optimale de **8 à 13 steps** par épisode en moyenne.
-- **Implémenter plusieurs algorithmes** (au minimum Q-Learning tabulaire et DQN) afin de comparer leurs performances respectives.
+- **Implémenter plusieurs algorithmes** (au minimum Q-Learning tabulaire et SARSA (on-policy)) afin de comparer leurs performances respectives.
 - **Comparer les résultats au brute-force** : un agent aléatoire nécessite en moyenne ~350 steps pour résoudre un épisode, tandis qu'un agent RL entraîné le résout en ~13 steps, soit une amélioration d'un facteur ~20.
 - **Produire un rapport d'analyse complet** avec graphiques, tableaux de benchmarking et analyse des hyperparamètres.
-- **Proposer des extensions bonus**, notamment un environnement multi-passagers (2 passagers) avec optimisation de route.
+- Utiliser le **reward shaping** comme boussole pour guider l'apprentissage de l'agent vers des stratégies optimales.
+- **Proposer des extensions bonus**, notamment un environnement multi-passagers (2 passagers) avec optimisation de route et un agent DQN (Deep Q-Network) pour explorer le deep RL, et une extension **TrackMania** pour explorer le deep RL sur un espace d'états continu.
 
 ### 1.3 Environnement Taxi-v3
 
@@ -93,10 +94,68 @@ Le cahier des charges impose les contraintes suivantes :
 - **Model-free** : les algorithmes ne doivent pas utiliser de modèle de transition de l'environnement. L'agent apprend uniquement à partir de l'expérience (états, actions, récompenses).
 - **Épisodique** : l'apprentissage se fait par épisodes complets (du début jusqu'à la résolution ou le timeout).
 - **Deux modes de fonctionnement** :
-  - **Mode utilisateur (user mode)** : l'utilisateur peut ajuster les hyperparamètres (learning rate, gamma, epsilon, etc.) et observer l'impact sur l'entraînement.
-  - **Mode time-limited** : utilise des hyperparamètres pré-optimisés pour fournir un agent performant dans un temps limité.
+  - **Mode tuning** : l'utilisateur peut ajuster les hyperparamètres (learning rate, gamma, epsilon, etc.) et observer l'impact sur l'entraînement.
+  - **Mode optimal** : utilise des hyperparamètres pré-optimisés pour fournir un agent performant sans configuration manuelle.
 - **Entrées utilisateur** : l'utilisateur spécifie le nombre d'épisodes d'entraînement et le nombre d'épisodes de test.
 - **Sorties attendues** : temps moyen, récompenses moyennes, affichage d'épisodes aléatoires résolus.
+
+### 1.5 Philosophie et Démarche Scientifique
+
+Le projet adopte une **démarche académique rigoureuse**, conformément aux attentes du module. L'approche ne se limite pas à produire un agent fonctionnel : il s'agit de comprendre les comportements observés, de les justifier théoriquement et de les valider expérimentalement.
+
+#### 1.5.1 Cadre Théorique
+
+Le projet s'appuie sur le formalisme des **Processus de Décision Markoviens (MDP)**, défini par le tuple (S, A, P, R, γ) :
+
+- **S** : ensemble fini des états (500 pour Taxi-v3)
+- **A** : ensemble fini des actions (6 pour Taxi-v3)
+- **P(s'|s, a)** : probabilité de transition (déterministe dans Taxi-v3)
+- **R(s, a, s')** : fonction de récompense
+- **γ** : facteur de discount (0 ≤ γ ≤ 1)
+
+L'objectif de l'agent est de trouver la politique optimale π* maximisant l'espérance de retour cumulé :
+
+```
+π* = argmax_π E[Σ γ^t · R(s_t, a_t, s_{t+1}) | π]
+```
+
+**Références fondamentales :**
+
+- Sutton, R. S., & Barto, A. G. (2018). *Reinforcement Learning: An Introduction* (2nd ed.). MIT Press.
+- Watkins, C. J. C. H. (1989). *Learning from Delayed Rewards*. PhD thesis, Cambridge University. (Q-Learning)
+- Rummery, G. A., & Niranjan, M. (1994). *On-line Q-learning using connectionist systems*. (SARSA)
+
+**Garanties de convergence :** Le Q-Learning tabulaire converge vers la Q-function optimale sous les conditions de Robbins-Monro : chaque paire (s, a) doit être visitée infiniment souvent, et le learning rate doit satisfaire Σα = ∞ et Σα² < ∞. En pratique, un epsilon-greedy avec décroissance et un nombre suffisant d'épisodes garantissent la convergence sur Taxi-v3.
+
+#### 1.5.2 Cycle Expérimental
+
+1. **Formuler des hypothèses** : avant chaque expérimentation, poser une question claire et formuler une prédiction. Exemple : *"Un discount factor γ élevé (0.99) devrait produire une convergence plus lente mais une meilleure politique finale qu'un γ faible (0.9)"*.
+2. **Expérimenter** : exécuter les entraînements avec un protocole contrôlé (seed fixe, conditions identiques, **10 runs minimum** avec seeds différentes).
+3. **Comparer** : analyser les résultats avec des métriques quantitatives (reward moyen, steps, taux de succès) et des **tests statistiques** (test t de Welch ou Mann-Whitney U, p < 0.05).
+4. **Analyser** : interpréter les résultats, identifier les tendances, expliquer les écarts par rapport aux hypothèses. Reporter les résultats sous forme μ ± σ (n=10).
+5. **Justifier** : conclure sur la validité des hypothèses et documenter les limites et pistes d'amélioration.
+
+> **Principe directeur** : *"Un bon projet IA, c'est un bon rapport, pas juste un bon code."* La compréhension des comportements prime sur la performance brute.
+
+#### 1.5.3 Structure du Rapport Académique
+
+Le rapport final doit suivre une structure académique :
+
+1. **Introduction** — Contexte, problématique, objectifs
+2. **État de l'art** — Positionnement RL tabulaire vs deep RL, algorithmes existants
+3. **Formalisation** — MDP Taxi-v3, espaces d'états/actions, récompenses
+4. **Méthodologie** — Algorithmes implémentés, hyperparamètres, protocole expérimental
+5. **Résultats expérimentaux** — Tableaux, graphiques, tests statistiques
+6. **Discussion** — Analyse critique, confirmation/infirmation des hypothèses
+7. **Limites et perspectives** — Ce qui n'a pas fonctionné, pistes d'amélioration
+8. **Conclusion**
+9. **Références bibliographiques** — ≥ 5 sources académiques
+
+**Points clés :**
+
+- Les résultats peuvent être **plus sensibles aux hyperparamètres qu'à l'algorithme** lui-même. Il est essentiel de documenter cette sensibilité.
+- Le rapport final doit **raconter une histoire**, pas être un simple empilement d'expériences.
+- Chaque choix de conception (algorithme, hyperparamètres, reward shaping) doit être **motivé et analysé**.
 
 ---
 
@@ -129,14 +188,14 @@ Le projet est organisé en **3 sprints** d'une à deux semaines chacun.
 | Structure du projet et architecture        | Must     | Équipe               |
 | Tests unitaires pour les agents de base    | Must     | Dev RL               |
 
-**Sprint 2 — Optimisation et DQN (Semaines 3-4)**
+**Sprint 2 — Optimisation et SARSA (Semaines 3-4)**
 
 | Tâche                                          | Priorité | Assignation      |
 |------------------------------------------------|----------|------------------|
 | Optimisation des hyperparamètres Q-Learning    | Must     | Dev RL           |
-| Implémentation de l'agent DQN (PyTorch)        | Should   | Dev RL           |
+| Implémentation de l'agent SARSA (on-policy)    | Must     | Dev RL           |
 | Framework de benchmarking automatisé           | Must     | Dev benchmarking |
-| Comparaison brute-force vs Q-Learning vs DQN   | Must     | Dev benchmarking |
+| Comparaison brute-force vs Q-Learning vs SARSA | Must     | Dev benchmarking |
 | Mode utilisateur avec saisie des paramètres    | Must     | Dev RL           |
 | Premières visualisations (courbes)             | Should   | Dev benchmarking |
 
@@ -149,7 +208,7 @@ Le projet est organisé en **3 sprints** d'une à deux semaines chacun.
 | Rapport d'analyse complet                      | Must     | Rédacteur        |
 | Extension multi-passagers (bonus)              | Could    | Équipe           |
 | Visualisations avancées (heatmap, GIF)         | Could    | Dev benchmarking |
-| Algorithmes supplémentaires (MC, SARSA)        | Could    | Dev RL           |
+| Algorithmes supplémentaires (MC, DQN)          | Could    | Dev RL           |
 | Présentation finale                            | Must     | Équipe           |
 
 ### 2.3 Outils de Collaboration
@@ -486,20 +545,20 @@ Les artefacts suivants sont générés et conservés par la CI :
 
 ---
 
-**US-1.2 — Entraîner un agent DQN**
+**US-1.2 — Entraîner un agent SARSA**
 
 | Champ      | Valeur                                                                 |
 |------------|------------------------------------------------------------------------|
 | ID         | US-1.2                                                                 |
-| Titre      | Entraîner un agent Deep Q-Network                                     |
-| Priorité   | **Should**                                                             |
-| Description| En tant qu'utilisateur, je veux entraîner un agent DQN utilisant un réseau de neurones (PyTorch) afin de comparer ses performances avec le Q-Learning tabulaire. |
+| Titre      | Entraîner un agent SARSA                                               |
+| Priorité   | **Must**                                                               |
+| Description| En tant qu'utilisateur, je veux entraîner un agent SARSA (on-policy) sur Taxi-v3 afin de comparer son comportement et ses performances avec l'agent Q-Learning (off-policy). |
 
 **Critères d'acceptation :**
 
-- **Given** un environnement Taxi-v3 et un agent DQN avec un réseau de neurones configuré,
+- **Given** un environnement Taxi-v3 et un agent SARSA configuré,
 - **When** l'utilisateur lance l'entraînement pour N épisodes,
-- **Then** l'agent utilise un replay buffer et un target network, le loss diminue progressivement, et les poids du modèle sont sauvegardés au format `.pt`.
+- **Then** l'agent utilise Q(s',a') où a' est l'action effectivement choisie (et non le max), la Q-table est sauvegardée sur disque, et le comportement on-policy est observable.
 
 ---
 
@@ -599,7 +658,7 @@ Les artefacts suivants sont générés et conservés par la CI :
 | ID         | US-2.3                                                                 |
 | Titre      | Comparaison multi-algorithmes                                          |
 | Priorité   | **Should**                                                             |
-| Description| En tant qu'utilisateur, je veux comparer les performances de plusieurs algorithmes (Q-Learning, DQN, éventuellement Monte Carlo et SARSA) afin d'identifier le plus adapté à Taxi-v3. |
+| Description| En tant qu'utilisateur, je veux comparer les performances de plusieurs algorithmes (Q-Learning, SARSA, éventuellement Monte Carlo et DQN) afin d'identifier le plus adapté à Taxi-v3. |
 
 **Critères d'acceptation :**
 
@@ -753,6 +812,23 @@ Les artefacts suivants sont générés et conservés par la CI :
 
 ---
 
+**US-4.4 — Extension Deep Q-Network (bonus)**
+
+| Champ      | Valeur                                                                 |
+|------------|------------------------------------------------------------------------|
+| ID         | US-4.4                                                                 |
+| Titre      | Extension Deep Q-Network (bonus)                                       |
+| Priorité   | **Could**                                                              |
+| Description| En tant qu'utilisateur, je veux implémenter un agent DQN pour démontrer le passage au deep RL et comparer ses performances avec les approches tabulaires. |
+
+**Critères d'acceptation :**
+
+- **Given** un environnement Taxi-v3 et un agent DQN avec un réseau de neurones configuré (PyTorch),
+- **When** l'utilisateur lance l'entraînement pour N épisodes,
+- **Then** l'agent utilise un replay buffer et un target network, le loss diminue progressivement, et les poids du modèle sont sauvegardés au format `.pt`.
+
+---
+
 ## 6. Métriques et Benchmarks
 
 ### 6.1 KPIs de Performance
@@ -795,8 +871,9 @@ Ces indicateurs permettent de situer les algorithmes les uns par rapport aux aut
 |---------------|----------------------|-------------|--------------|-------------|-------------------|-----------|
 | Brute-force   | 0                    | ~350        | ~ -700       | < 1%        | 0s                | ~0 MB     |
 | Q-Learning    | 10 000               | ~13         | ~8.0         | > 95%       | ~Xs               | ~0.1 MB   |
-| DQN           | 10 000               | ~15         | ~7.0         | > 90%       | ~Xs               | ~Y MB     |
+| SARSA         | 10 000               | ~15         | ~7.5         | > 90%       | ~Xs               | ~0.1 MB   |
 | Monte Carlo   | 10 000               | ~20         | ~5.0         | > 80%       | ~Xs               | ~Z MB     |
+| DQN (bonus)   | 10 000               | ~15         | ~7.0         | > 90%       | ~Xs               | ~Y MB     |
 
 > Les valeurs exactes seront remplies lors de l'exécution des benchmarks.
 
@@ -813,9 +890,11 @@ Pour garantir la reproductibilité et la fiabilité des résultats, le protocole
 
 - **Seed fixe** : un seed aléatoire fixe (ex. `seed=42`) est utilisé pour l'initialisation de l'environnement et des agents. Le même seed est réutilisé pour tous les algorithmes afin de garantir des conditions identiques.
 - **Minimum 100 épisodes de test** : chaque évaluation est réalisée sur au moins 100 épisodes pour obtenir des statistiques significatives.
-- **5 runs par configuration** : chaque configuration (algorithme + hyperparamètres) est exécutée 5 fois avec des seeds différents. Les résultats reportés incluent la moyenne et l'écart-type.
+- **10 runs par configuration** : chaque configuration (algorithme + hyperparamètres) est exécutée 10 fois avec des seeds différents. Les résultats reportés incluent la moyenne et l'écart-type.
+- **Tests statistiques** : les différences entre algorithmes doivent être validées par un test statistique (test t de Welch pour les distributions normales, Mann-Whitney U sinon). Un résultat est considéré significatif si p < 0.05. Les résultats sont reportés sous la forme μ ± σ avec intervalles de confiance à 95%.
 - **Spécifications machine documentées** : le CPU, la RAM, le GPU (si utilisé pour DQN) et la version de Python/PyTorch sont documentés dans le rapport de benchmark.
 - **Pas de parallélisation** : les benchmarks sont exécutés séquentiellement pour des mesures de temps fiables.
+- **Temps de convergence** : pour chaque algorithme, mesurer le nombre d'épisodes nécessaire pour atteindre 90% du reward optimal de manière stable (sur 100 épisodes consécutifs).
 
 ---
 
@@ -833,14 +912,14 @@ Au-delà des graphiques de base, les visualisations avancées comprennent :
 
 - **Heatmap de la Q-table** : pour chaque action, une grille 5×5 colorée représente la valeur Q moyenne pour chaque position du taxi. Cela permet de visualiser les zones de la grille les plus valorisées par l'agent.
 - **Animation GIF** : un épisode résolu est rendu frame par frame et exporté en GIF animé, permettant une visualisation dynamique intégrable dans le rapport ou une présentation.
-- **Dashboard interactif** : un dashboard Streamlit ou Gradio permettant de lancer des entraînements, ajuster les hyperparamètres et visualiser les résultats en temps réel.
+- **Dashboard interactif (GUI secondaire, focus IA)** : un dashboard optionnel pourrait être développé si le temps le permet, mais le focus reste sur les algorithmes et l'analyse.
 
 ### 7.3 Algorithmes Supplémentaires
 
-En plus de Q-Learning et DQN, les algorithmes bonus suivants peuvent être implémentés :
+En plus de Q-Learning et SARSA, les algorithmes bonus suivants peuvent être implémentés :
 
 - **Monte Carlo** : estimation des valeurs Q à partir de retours complets d'épisodes (first-visit ou every-visit).
-- **SARSA** : variante on-policy du Q-Learning, potentiellement plus stable mais convergence plus lente.
+- **DQN (Deep Q-Network)** : extension du Q-Learning utilisant un réseau de neurones pour approximer la fonction Q. Permet de passer à des espaces d'états plus grands, mais surdimensionné pour Taxi-v3.
 - **Double Q-Learning** : correction du biais de surestimation du Q-Learning classique, utilisant deux Q-tables.
 
 ### 7.4 Optimisation Avancée
@@ -852,6 +931,33 @@ Plusieurs stratégies d'optimisation avancée sont envisagées :
   - **Epsilon-greedy** (baseline) : exploration aléatoire avec probabilité epsilon, décroissante au fil du temps.
   - **Boltzmann (softmax)** : sélection d'action proportionnelle à l'exponentielle des valeurs Q, contrôlée par un paramètre de température.
   - **UCB (Upper Confidence Bound)** : exploration basée sur l'incertitude, favorisant les actions peu explorées.
+
+### 7.5 Extension TrackMania (Deep RL)
+
+En tant qu'extension avancée, le projet explore l'application du deep RL à un environnement radicalement différent : **TrackMania**, un jeu de course automobile. Cette extension démontre la capacité de généralisation des concepts RL appris sur Taxi-v3 à un problème à espace d'états continu.
+
+**Caractéristiques de l'environnement :**
+
+| Propriété | Taxi-v3 | TrackMania |
+|-----------|---------|------------|
+| Espace d'états | Discret (500) | Continu (images / LIDAR) |
+| Espace d'actions | Discret (6) | Continu (accélération, direction) |
+| Méthode RL | Tabulaire (Q-table) | Deep RL (réseau de neurones) |
+| Complexité | Simple | Élevée |
+
+**Approche envisagée :**
+
+- Utilisation de la bibliothèque `tmrl` pour l'interface Gymnasium avec TrackMania
+- Algorithme : **PPO** (Proximal Policy Optimization) ou **SAC** (Soft Actor-Critic) via **Stable-Baselines3**
+- Observations : vecteurs LIDAR (distances aux murs) plutôt que pixels bruts (plus accessible)
+- Objectif : compléter un tour de circuit en minimisant le temps
+
+**Intérêt pédagogique :**
+
+- Transition concrète du RL tabulaire au deep RL
+- Gestion des espaces d'états et d'actions continus
+- Analyse comparative : complexité d'entraînement, stabilité, reward shaping entre environnement discret et continu
+- Démonstration que les concepts fondamentaux (exploration/exploitation, discount, policy) s'appliquent universellement
 
 ---
 
@@ -869,7 +975,6 @@ Le projet utilise **Python 3.10+**, bénéficiant des fonctionnalités modernes 
 | `numpy`         | >= 1.24   | Calcul numérique, Q-tables, opérations matricielles   |
 | `matplotlib`    | >= 3.7    | Génération de graphiques (courbes, boxplots, heatmaps)|
 | `seaborn`       | >= 0.12   | Graphiques statistiques avancés                       |
-| `torch`         | >= 2.0    | Implémentation du DQN (réseau de neurones)            |
 | `pytest`        | >= 7.0    | Framework de tests unitaires et d'intégration         |
 | `ruff`          | >= 0.3    | Linter Python ultra-rapide                            |
 | `black`         | >= 24.0   | Formateur de code automatique                         |
@@ -886,6 +991,9 @@ Le projet utilise **Python 3.10+**, bénéficiant des fonctionnalités modernes 
 | `pandas`        | Manipulation de données tabulaires pour les benchmarks |
 | `tqdm`          | Barres de progression pour l'entraînement              |
 | `pytest-cov`    | Mesure de la couverture de code                        |
+| `torch`         | Implémentation du DQN (extension bonus)                |
+| `stable-baselines3` | Algorithmes deep RL pré-implémentés (PPO, SAC) pour l'extension TrackMania |
+| `tmrl`              | Interface Gymnasium pour l'environnement TrackMania                        |
 
 ---
 
@@ -912,10 +1020,11 @@ Le projet doit produire les livrables suivants :
 | Livrable                          | Format           | Description                                                      |
 |-----------------------------------|------------------|------------------------------------------------------------------|
 | Code source                       | GitHub (dépôt)   | Code complet, documenté, testé, avec historique Git propre       |
-| Rapport d'analyse                 | PDF / Markdown   | Analyse des résultats, graphiques, tableaux comparatifs, conclusions |
+| Rapport d'analyse                 | PDF / Markdown   | Rapport d'analyse scientifique racontant une histoire : hypothèses, protocole expérimental, résultats, analyse critique, limites et pistes d'amélioration. C'est un livrable clé du projet. |
 | Présentation                      | Slides           | Support de présentation pour la soutenance du projet             |
 | Modèles entraînés                 | `.npy` / `.pt`   | Q-tables et poids DQN sauvegardés et reproductibles              |
 | Résultats de benchmarking         | CSV / JSON / PNG  | Données brutes et graphiques des benchmarks                      |
+| Références bibliographiques     | BibTeX / Markdown | Liste des publications et ouvrages cités (Sutton & Barto 2018, Watkins 1989, Rummery & Niranjan 1994, etc.) |
 
 ### 10.2 Definition of Done (DoD)
 
@@ -929,3 +1038,4 @@ Une fonctionnalité est considérée comme terminée lorsque **tous** les critè
 - **Documentation à jour** : les docstrings, le README et la documentation technique reflètent les changements.
 - **Métriques documentées** : si la fonctionnalité impacte les performances de l'agent, les nouvelles métriques sont mesurées et documentées.
 - **Pas de régression** : les benchmarks ne montrent pas de dégradation par rapport aux résultats précédents.
+- **Analyse scientifique** : les résultats incluent des hypothèses formulées, des comparaisons rigoureuses et une discussion critique.

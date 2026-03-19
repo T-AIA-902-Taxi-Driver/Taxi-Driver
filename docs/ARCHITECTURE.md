@@ -10,10 +10,11 @@ L'environnement Taxi-v3 est un problème classique de RL épisodique dans lequel
 
 ### Objectifs principaux
 
-- Implémenter plusieurs algorithmes de RL model-free : Brute Force, Q-Learning tabulaire, Deep Q-Network (DQN) et Monte Carlo.
+- Implémenter plusieurs algorithmes de RL model-free : Brute Force, Q-Learning tabulaire, SARSA (on-policy) et Monte Carlo.
 - Proposer deux modes d'exécution : un mode utilisateur permettant le réglage d'hyperparamètres et un mode optimisé à temps limité.
 - Fournir un framework de benchmarking et de visualisation pour comparer les performances des agents.
 - En bonus, développer un environnement personnalisé avec 2 passagers.
+- En extension bonus, un agent DQN (Deep Q-Network) peut être implémenté pour démontrer le passage au deep RL. De plus, un environnement **TrackMania** peut être intégré comme extension avancée pour démontrer le deep RL sur un espace d'états continu (LIDAR/images) avec des algorithmes comme PPO ou SAC.
 
 ### Stack Technologique (résumé)
 
@@ -22,7 +23,7 @@ L'environnement Taxi-v3 est un problème classique de RL épisodique dans lequel
 | Langage            | Python 3.10+                          |
 | Environnement RL   | Gymnasium (Taxi-v3)                   |
 | Calcul numérique   | NumPy                                 |
-| Deep Learning       | PyTorch                               |
+| Deep Learning       | PyTorch (optionnel, extension DQN bonus) |
 | Visualisation       | Matplotlib, Seaborn                   |
 | Tests               | pytest                                |
 | Linting / Format    | ruff                                  |
@@ -100,12 +101,14 @@ Taxi-Driver/
 │   │   ├── base_agent.py          # Classe abstraite BaseAgent
 │   │   ├── brute_force_agent.py   # Agent aléatoire / brute force
 │   │   ├── q_learning_agent.py    # Agent Q-Learning tabulaire
-│   │   ├── dqn_agent.py           # Agent Deep Q-Network
+│   │   ├── sarsa_agent.py          # Agent SARSA on-policy
+│   │   ├── dqn_agent.py           # Agent Deep Q-Network (extension bonus)
 │   │   └── monte_carlo_agent.py   # Agent Monte Carlo (comparaison)
 │   ├── environments/
 │   │   ├── __init__.py
 │   │   ├── taxi_wrapper.py        # Wrapper Taxi-v3 standard
-│   │   └── multi_passenger_env.py # Extension 2 passagers (bonus)
+│   │   ├── multi_passenger_env.py # Extension 2 passagers (bonus)
+│   │   └── trackmania_wrapper.py  # Wrapper TrackMania (extension bonus deep RL)
 │   ├── training/
 │   │   ├── __init__.py
 │   │   ├── trainer.py             # Pipeline d'entraînement générique
@@ -148,13 +151,17 @@ Taxi-Driver/
 
 **`src/agents/q_learning_agent.py`** : Implémentation de l'algorithme Q-Learning tabulaire avec politique epsilon-greedy et décroissance progressive de l'exploration. Maintient une Q-table (matrice NumPy 500x6) et met à jour les valeurs Q via l'équation de Bellman à chaque pas de temps.
 
-**`src/agents/dqn_agent.py`** : Implémentation du Deep Q-Network utilisant un réseau de neurones PyTorch pour approximer la fonction Q. Intègre un replay buffer, un réseau cible (target network) avec mise à jour douce (soft update), et une politique epsilon-greedy décroissante.
+**`src/agents/sarsa_agent.py`** : Implémentation de l'algorithme SARSA (State-Action-Reward-State-Action) on-policy avec politique epsilon-greedy et décroissance progressive de l'exploration. Contrairement au Q-Learning qui utilise max Q(s',a') pour la mise à jour (off-policy), SARSA utilise l'action a' réellement choisie par la politique courante : Q(s,a) += α[r + γ·Q(s',a') - Q(s,a)]. Cette approche on-policy rend SARSA plus conservateur et plus stable face à l'exploration, au prix d'une convergence potentiellement plus lente.
+
+**`src/agents/dqn_agent.py`** (extension bonus) : Implémentation du Deep Q-Network utilisant un réseau de neurones PyTorch pour approximer la fonction Q. Intègre un replay buffer, un réseau cible (target network) avec mise à jour douce (soft update), et une politique epsilon-greedy décroissante.
 
 **`src/agents/monte_carlo_agent.py`** : Agent Monte Carlo first-visit qui estime les valeurs Q à partir des retours complets d'épisodes entiers. Contrairement au Q-Learning qui met à jour à chaque pas, cet agent accumule les transitions d'un épisode puis effectue la mise à jour en fin d'épisode.
 
 **`src/environments/taxi_wrapper.py`** : Wrapper autour de l'environnement Gymnasium Taxi-v3 qui standardise l'interface (reset, step, render) et fournit des utilitaires comme le décodage d'état (position du taxi, passager, destination). Facilite l'interchangeabilité entre l'environnement standard et l'environnement personnalisé.
 
 **`src/environments/multi_passenger_env.py`** : Environnement personnalisé héritant de `gymnasium.Env` qui étend Taxi-v3 pour gérer deux passagers simultanément. L'espace d'états et la logique de récompenses sont adaptés pour refléter la complexité accrue du problème multi-passagers.
+
+**`src/environments/trackmania_wrapper.py`** : (Extension bonus) Wrapper autour de l'environnement TrackMania via la bibliothèque `tmrl`, standardisant l'interface Gymnasium pour permettre l'entraînement d'agents deep RL (PPO, SAC via Stable-Baselines3). Fournit des observations sous forme de vecteurs LIDAR (distances aux murs du circuit) et un espace d'actions continu (accélération, direction). Permet la comparaison directe entre RL tabulaire (Taxi-v3) et deep RL (TrackMania).
 
 **`src/training/trainer.py`** : Pipeline d'entraînement générique qui orchestre la boucle épisodique : pour chaque épisode, il réinitialise l'environnement, exécute la boucle pas-à-pas (action, transition, apprentissage), enregistre les métriques et gère les callbacks. Il est agnostique vis-à-vis de l'agent utilisé grâce au pattern Strategy.
 
@@ -220,7 +227,24 @@ classDiagram
         -_epsilon_greedy(state: int) int
     }
 
-    class DQNAgent {
+    class SARSAAgent {
+        +name: str
+        +q_table: ndarray
+        +alpha: float
+        +gamma: float
+        +epsilon: float
+        +epsilon_decay: float
+        +epsilon_min: float
+        +next_action: int
+        +select_action(state: int) int
+        +learn(state: int, action: int, reward: float, next_state: int, done: bool)
+        +save(path: str)
+        +load(path: str)
+        +reset()
+        -_epsilon_greedy(state: int) int
+    }
+
+    class DQNAgent["DQNAgent (extension bonus)"] {
         +name: str
         +policy_net: QNetwork
         +target_net: QNetwork
@@ -294,6 +318,18 @@ classDiagram
         -_compute_reward(action: int) float
     }
 
+    class TrackManiaEnvWrapper {
+        +env: gymnasium.Env
+        +observation_type: str
+        +lidar_resolution: int
+        +action_space: Space
+        +observation_space: Space
+        +reset(seed: int) tuple
+        +step(action: ndarray) tuple
+        +render()
+        +close()
+    }
+
     class Config {
         <<dataclass>>
         +algorithm: str
@@ -364,6 +400,7 @@ classDiagram
 
     BaseAgent <|-- BruteForceAgent
     BaseAgent <|-- QLearningAgent
+    BaseAgent <|-- SARSAAgent
     BaseAgent <|-- DQNAgent
     BaseAgent <|-- MonteCarloAgent
 
@@ -387,11 +424,12 @@ classDiagram
     MultiPassengerEnv --|> gymnasium.Env : herite
 
     TaxiEnvWrapper o-- gymnasium.Env : encapsule
+    TrackManiaEnvWrapper o-- gymnasium.Env : encapsule
 ```
 
 ### Description des relations
 
-- **Heritage** : `BruteForceAgent`, `QLearningAgent`, `DQNAgent` et `MonteCarloAgent` heritent de `BaseAgent`, garantissant une interface commune pour le polymorphisme.
+- **Heritage** : `BruteForceAgent`, `QLearningAgent`, `SARSAAgent`, `DQNAgent` et `MonteCarloAgent` heritent de `BaseAgent`, garantissant une interface commune pour le polymorphisme.
 - **Composition** : `DQNAgent` possede un `ReplayBuffer` et deux instances de `QNetwork` (reseau de politique et reseau cible).
 - **Association** : `Trainer` utilise un `BaseAgent`, un `TaxiEnvWrapper` et un `Config` pour orchestrer l'entrainement.
 - **Dependance** : `Evaluator` et `Benchmarker` dependent respectivement des agents/environnements et du Trainer/Evaluator pour produire leurs resultats.
@@ -597,13 +635,15 @@ flowchart TB
     subgraph Agents["Agents RL"]
         BF["BruteForceAgent"]
         QL["QLearningAgent"]
-        DQN["DQNAgent"]
+        SARSA["SARSAAgent"]
+        DQN["DQNAgent (extension)"]
         MC["MonteCarloAgent"]
     end
 
     subgraph Envs["Environnements"]
         TAXI["TaxiEnvWrapper<br/>(Taxi-v3)"]
         MULTI["MultiPassengerEnv<br/>(2 passagers)"]
+        TM["TrackManiaEnvWrapper<br/>(extension bonus)"]
     end
 
     TR["Trainer"]
@@ -677,7 +717,7 @@ Valeurs par defaut (dans Config) < Fichier YAML < Arguments CLI
 
 | Champ                   | Type    | Defaut        | Description                                        |
 |-------------------------|---------|---------------|----------------------------------------------------|
-| `algorithm`             | `str`   | `"q_learning"`| Algorithme a utiliser (brute_force, q_learning, dqn, monte_carlo) |
+| `algorithm`             | `str`   | `"q_learning"`| Algorithme a utiliser (brute_force, q_learning, sarsa, monte_carlo, dqn) |
 | `alpha`                 | `float` | `0.1`         | Taux d'apprentissage (learning rate)               |
 | `gamma`                 | `float` | `0.99`        | Facteur de discount                                |
 | `epsilon`               | `float` | `1.0`         | Taux d'exploration initial                         |
@@ -822,8 +862,9 @@ La creation des agents est centralisee via une fonction factory qui instancie le
 AGENT_REGISTRY = {
     "brute_force": BruteForceAgent,
     "q_learning": QLearningAgent,
-    "dqn": DQNAgent,
+    "sarsa": SARSAAgent,
     "monte_carlo": MonteCarloAgent,
+    "dqn": DQNAgent,  # extension bonus
 }
 
 def create_agent(config: Config) -> BaseAgent:
