@@ -30,6 +30,12 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   `decode_state()`, hook de reward shaping avec `info["raw_reward"]`, seeding premier-reset,
   graine explicite par épisode pour l'évaluation) + factory `create_env()`
 
+- Environnement multi-passagers (bonus du sujet) : `MultiPassengerTaxiEnv`
+  à 14 400 états (25×6²×4², corrige le décompte 10 000 de CADRAGE.md qui omettait
+  le statut « livré »), capacité 2, règles pickup/dropoff déterministes
+  (plus petit indice), dépose hors destination interdite, TimeLimit 500 ;
+  analyse d'ordre de route (`route_analysis.py`) ; protocole `EnvWrapper` partagé
+
 ### Changed
 
 - `.gitignore` : les modèles finaux (`models/final/`) et les résultats agrégés/figures
