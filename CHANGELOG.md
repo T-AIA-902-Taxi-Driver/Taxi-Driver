@@ -26,6 +26,9 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   (observations LIDAR aplaties/normalisées Box(83,), actions continues bornées),
   script SAC autonome `scripts/train_trackmania.py`, guide `docs/TRACKMANIA.md` —
   code livrable testé sur environnement factice (le jeu n'est pas exécutable en CI)
+- `TaxiEnvWrapper` : encapsulation Gymnasium Taxi-v3 (render ansi, `n_states`/`n_actions`,
+  `decode_state()`, hook de reward shaping avec `info["raw_reward"]`, seeding premier-reset,
+  graine explicite par épisode pour l'évaluation) + factory `create_env()`
 
 ### Changed
 
