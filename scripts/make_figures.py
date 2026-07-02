@@ -20,11 +20,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
+import numpy as np
+import pandas as pd
 
-from src.evaluation.metrics import mean_ci95  # noqa: E402
-from src.visualization import plots  # noqa: E402
+from src.evaluation.metrics import mean_ci95
+from src.visualization import plots
 
 ALGO_LABELS = {
     "brute_force": "BruteForce",
@@ -249,10 +249,12 @@ def fig_f11(results: Path, out: Path) -> None:
     candidates = [d for d in _run_dirs(results, "e2") if _algo_of(d) == "q_learning"]
     if not candidates:
         return
-    best = max(
-        candidates,
-        key=lambda d: json.load(open(d / "summary.json"))["eval_mean_reward"],
-    )
+
+    def _eval_reward(run_dir: Path) -> float:
+        with open(run_dir / "summary.json") as handle:
+            return float(json.load(handle)["eval_mean_reward"])
+
+    best = max(candidates, key=_eval_reward)
     model = np.load(best / "model.npz")
     plots.q_values_heatmap(model["q_table"], None, out / "F11_heatmap_qvalues.png")
 
