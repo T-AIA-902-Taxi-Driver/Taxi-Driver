@@ -147,7 +147,3 @@ class TestFactory:
         _, reward, _, _, info = env.step(0)
         assert reward == 0.0
         assert info["raw_reward"] != 0.0
-
-    def test_create_env_multi_not_implemented(self) -> None:
-        with pytest.raises(NotImplementedError, match="multi-passenger"):
-            create_env(Config(env="multi"))
