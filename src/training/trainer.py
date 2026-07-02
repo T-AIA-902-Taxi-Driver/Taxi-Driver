@@ -45,6 +45,7 @@ class TrainingHistory:
     probe_episodes: list[int] = field(default_factory=list)
     probe_rewards: list[float] = field(default_factory=list)
     probe_steps: list[float] = field(default_factory=list)
+    probe_max_q: list[float] = field(default_factory=list)
     wall_time: float = 0.0
     stop_reason: str = "completed"
 
@@ -178,3 +179,24 @@ class Trainer:
         history.probe_episodes.append(episode + 1)
         history.probe_rewards.append(results.mean_reward)
         history.probe_steps.append(results.mean_steps)
+        history.probe_max_q.append(self._probe_start_state_value())
+
+    def _probe_start_state_value(self) -> float:
+        """Mean max-a Q(s0, a) over probe start states (overestimation signal).
+
+        Compared across algorithms against the same realized probe returns,
+        the inflation of this estimate exposes Q-Learning's max-operator bias
+        (protocol H7). NaN when the agent exposes no value estimates.
+        """
+        import math
+
+        from src.utils.seeding import probe_seeds
+
+        q_values = getattr(self.agent, "q_values", None)
+        if not callable(q_values) or self.probe_env is None:
+            return math.nan
+        values = []
+        for seed in probe_seeds(self.config.seed, self.config.n_probe_episodes):
+            state, _ = self.probe_env.reset(seed=seed)
+            values.append(float(max(q_values(state))))
+        return sum(values) / len(values)

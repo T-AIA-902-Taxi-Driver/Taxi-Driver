@@ -118,6 +118,9 @@ def run_single(spec: RunSpec, results_root: str | Path = "results") -> dict[str,
     evaluator = Evaluator(env, seeds=eval_seeds(EVAL_BASE_SEED, config.n_test_episodes))
     results = evaluator.evaluate(agent, config.n_test_episodes)
 
+    model_name = "model.pt" if config.algorithm == "dqn" else "model.npz"
+    agent.save(run_dir / model_name)
+
     _write_config(run_dir, spec, config)
     _write_train_csv(run_dir, history)
     _write_probes_csv(run_dir, history)
@@ -164,11 +167,12 @@ def _write_train_csv(run_dir: Path, history: TrainingHistory) -> None:
 def _write_probes_csv(run_dir: Path, history: TrainingHistory) -> None:
     with open(run_dir / "probes.csv", "w", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["episode", "probe_mean_reward", "probe_mean_steps"])
-        for episode, reward, steps in zip(
-            history.probe_episodes, history.probe_rewards, history.probe_steps, strict=True
+        writer.writerow(["episode", "probe_mean_reward", "probe_mean_steps", "probe_max_q"])
+        max_qs = history.probe_max_q or [float("nan")] * len(history.probe_episodes)
+        for episode, reward, steps, max_q in zip(
+            history.probe_episodes, history.probe_rewards, history.probe_steps, max_qs, strict=True
         ):
-            writer.writerow([episode, reward, steps])
+            writer.writerow([episode, reward, steps, max_q])
 
 
 def _write_eval_csv(run_dir: Path, results: Any, eval_base_seed: int) -> None:
@@ -223,6 +227,7 @@ def _build_summary(
         # probes (raw series kept for threshold computation at aggregation)
         "probe_episodes": history.probe_episodes,
         "probe_rewards": history.probe_rewards,
+        "probe_max_q": history.probe_max_q,
         # evaluation (fixed seed set)
         "eval_mean_reward": results.mean_reward,
         "eval_std_reward": results.std_reward,
