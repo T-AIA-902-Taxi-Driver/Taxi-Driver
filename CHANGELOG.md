@@ -22,6 +22,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - Utilitaires de reproductibilité (`src/utils/seeding.py`) : flux RNG indépendants,
   listes de seeds d'évaluation et de sondes disjointes
 - Configuration par défaut commentée (`configs/default.yaml`)
+- Extension TrackMania (bonus deep RL) : `TMEnvProtocol` + `TrackManiaEnvWrapper`
+  (observations LIDAR aplaties/normalisées Box(83,), actions continues bornées),
+  script SAC autonome `scripts/train_trackmania.py`, guide `docs/TRACKMANIA.md` —
+  code livrable testé sur environnement factice (le jeu n'est pas exécutable en CI)
 
 ### Changed
 
