@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from src.agents.base_agent import BaseAgent
     from src.config import Config
-    from src.environments.taxi_wrapper import TaxiEnvWrapper
+    from src.environments import EnvWrapper
 
 
 @dataclass
@@ -94,10 +94,10 @@ class Trainer:
     def __init__(
         self,
         agent: BaseAgent,
-        env: TaxiEnvWrapper,
+        env: EnvWrapper,
         config: Config,
         callbacks: list[Callback] | None = None,
-        probe_env: TaxiEnvWrapper | None = None,
+        probe_env: EnvWrapper | None = None,
     ) -> None:
         self.agent = agent
         self.env = env
