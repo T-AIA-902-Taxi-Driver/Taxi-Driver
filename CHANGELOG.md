@@ -30,6 +30,11 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   `decode_state()`, hook de reward shaping avec `info["raw_reward"]`, seeding premier-reset,
   graine explicite par épisode pour l'évaluation) + factory `create_env()`
 
+- Agent DQN (extension deep RL) : QNetwork (MLP one-hot 2×couches cachées),
+  ReplayBuffer en anneau numpy préalloué, cibles Double-DQN par défaut, mise à jour
+  douce du réseau cible (Polyak), Huber + clipping de gradient, détection
+  automatique du device (CUDA), sauvegarde .pt avec optimiseur et métadonnées
+
 ### Changed
 
 - `.gitignore` : les modèles finaux (`models/final/`) et les résultats agrégés/figures
