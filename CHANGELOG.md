@@ -53,6 +53,14 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   au lancement), mode time-limited (config optimisée, budget temps 90/10),
   auto-détection de l'algorithme depuis les métadonnées du modèle ; smoke test CI
 
+- Benchmarking scientifique : runner d'expériences idempotent (hash de config,
+  reprise après crash), module statistique (Shapiro→Welch/Mann-Whitney, Holm,
+  Hedges g, Cliff δ), reward shaping (potentiel/naïf/pénalité), R* par value
+  iteration, sous-commandes `benchmark`/`compare`, campagne E0-E7
+  (`scripts/run_campaign.py`), protocole expérimental (`docs/PROTOCOLE.md`)
+- Visualisation : générateurs de figures F1-F12 pilotés par les données
+  (`scripts/make_figures.py`), GIF d'épisode, instrumentation max-Q des sondes
+
 ### Changed
 
 - `.gitignore` : les modèles finaux (`models/final/`) et les résultats agrégés/figures
