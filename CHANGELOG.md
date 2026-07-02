@@ -22,6 +22,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - Utilitaires de reproductibilité (`src/utils/seeding.py`) : flux RNG indépendants,
   listes de seeds d'évaluation et de sondes disjointes
 - Configuration par défaut commentée (`configs/default.yaml`)
+- Agents RL tabulaires : `BaseAgent` (contrat terminated-vs-truncated), stratégies
+  d'exploration enfichables (ε-greedy exp/linéaire, Boltzmann, UCB), `TabularAgent`
+  (argmax greedy déterministe, save/load npz), Q-Learning, SARSA, Expected SARSA,
+  Double Q-Learning, Monte Carlo first-visit, BruteForce ; factory `create_agent()`
 - `TaxiEnvWrapper` : encapsulation Gymnasium Taxi-v3 (render ansi, `n_states`/`n_actions`,
   `decode_state()`, hook de reward shaping avec `info["raw_reward"]`, seeding premier-reset,
   graine explicite par épisode pour l'évaluation) + factory `create_env()`
