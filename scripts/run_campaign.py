@@ -199,11 +199,17 @@ BLOCKS: dict[str, tuple[object, bool]] = {
 
 
 def compute_r_star(results_root: Path) -> float:
-    """Compute (or reload) the optimal-policy reference reward R*."""
+    """Compute (or reload) R* on the PROBE seed set.
+
+    Probe rewards are measured on the probe episodes, so the convergence
+    threshold must reference the probe-set optimum — thresholding probes
+    against the eval-set optimum (8.05 vs 7.77 here) censors runs whose
+    optimal plateau sits between the two.
+    """
     r_star_path = results_root / "r_star.json"
     if r_star_path.exists():
         with open(r_star_path) as handle:
-            return float(json.load(handle)["r_star"])
+            return float(json.load(handle)["r_star_probe"])
     from src.benchmarking.value_iteration import optimal_reference_reward
     from src.environments import create_env
     from src.utils.seeding import eval_seeds, probe_seeds
@@ -219,16 +225,25 @@ def compute_r_star(results_root: Path) -> float:
             indent=2,
         )
     print(f"R* (eval set) = {r_star_eval:.3f} | R* (probe set) = {r_star_probe:.3f}")
-    return r_star_eval
+    return r_star_probe
 
 
-def maybe_write_optimized(results_root: Path) -> None:
-    """Promote the E1a grid winner to configs/optimized.yaml."""
-    frame = aggregate_runs(results_root, "e1a")
+def maybe_write_optimized(results_root: Path, r_star: float) -> None:
+    """Promote the E1a grid winner to configs/optimized.yaml.
+
+    Ties on final reward (several configurations reach the optimal policy)
+    are broken by convergence speed — the property the time-limited mode
+    actually needs.
+    """
+    frame = aggregate_runs(results_root, "e1a", r_star=r_star)
     ranking = (
-        frame.groupby(["alpha", "gamma"])["eval_mean_reward"]
-        .agg(["mean", "count"])
-        .sort_values("mean", ascending=False)
+        frame.groupby(["alpha", "gamma"])
+        .agg(
+            mean=("eval_mean_reward", "mean"),
+            count=("eval_mean_reward", "count"),
+            ett=("episodes_to_threshold", "mean"),
+        )
+        .sort_values(["mean", "ett"], ascending=[False, True])
         .reset_index()
     )
     best = ranking.iloc[0]
@@ -286,7 +301,7 @@ def main() -> int:
         aggregate_runs(results_root, name, r_star=r_star)
         print(f"=== block {name} done in {(time.monotonic() - block_start) / 60:.1f} min ===")
         if name == "e1a":
-            maybe_write_optimized(results_root)
+            maybe_write_optimized(results_root, r_star)
     print(f"\ncampaign finished in {(time.monotonic() - campaign_start) / 60:.1f} min")
     return 0
 
