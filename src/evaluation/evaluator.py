@@ -12,7 +12,7 @@ from src.evaluation.metrics import EvalResults, compute_eval_results
 
 if TYPE_CHECKING:
     from src.agents.base_agent import BaseAgent
-    from src.environments.taxi_wrapper import TaxiEnvWrapper
+    from src.environments import EnvWrapper
 
 ACTION_NAMES = ("South", "North", "East", "West", "Pickup", "Dropoff")
 
@@ -25,7 +25,7 @@ class Evaluator:
     for fair pairwise comparisons and the statistical protocol.
     """
 
-    def __init__(self, env: TaxiEnvWrapper, seeds: list[int] | None = None) -> None:
+    def __init__(self, env: EnvWrapper, seeds: list[int] | None = None) -> None:
         self.env = env
         self.seeds = seeds
 
