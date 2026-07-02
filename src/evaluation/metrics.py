@@ -49,6 +49,9 @@ class EvalResults:
     mean_episode_seconds: float
     rewards: list[float] = field(repr=False)
     steps: list[int] = field(repr=False)
+    successes: list[bool] = field(repr=False)
+    illegal_actions: list[int] = field(repr=False)
+    durations: list[float] = field(repr=False)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -118,4 +121,7 @@ def compute_eval_results(
         mean_episode_seconds=float(np.mean(durations)),
         rewards=list(rewards),
         steps=list(steps),
+        successes=list(successes),
+        illegal_actions=list(illegal_actions),
+        durations=list(durations),
     )

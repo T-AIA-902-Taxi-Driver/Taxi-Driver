@@ -257,10 +257,130 @@ def cmd_play(args: argparse.Namespace) -> int:
 
 
 def cmd_benchmark(args: argparse.Namespace) -> int:
-    print("the benchmark command lands with feature/benchmarking-viz")
-    return 2
+    """Hyperparameter sweep defined by a YAML file (grid search)."""
+    import dataclasses
+    import itertools
+
+    import yaml
+
+    from src.benchmarking.benchmarker import (
+        RunSpec,
+        aggregate_runs,
+        run_block,
+        write_optimized_yaml,
+    )
+
+    with open(args.sweep_config) as handle:
+        sweep_config = yaml.safe_load(handle)
+    exp_id = sweep_config.get("exp_id", "sweep")
+    base = Config(**sweep_config.get("base", {}))
+    algorithms: list[str] = sweep_config.get("algorithms", ["q_learning"])
+    grid: dict[str, list[object]] = sweep_config.get("sweep", {})
+    n_seeds: int = int(sweep_config.get("n_seeds", 10))
+    seed_base: int = int(sweep_config.get("seed_base", 42))
+
+    specs: list[RunSpec] = []
+    param_names = list(grid)
+    combos = list(itertools.product(*(grid[name] for name in param_names))) or [()]
+    for algorithm in algorithms:
+        for combo in combos:
+            overrides = dict(zip(param_names, combo, strict=True))
+            config = dataclasses.replace(base, algorithm=algorithm, **overrides)  # type: ignore[arg-type]
+            specs.extend(
+                RunSpec(exp_id=exp_id, config=config, seed=seed_base + k) for k in range(n_seeds)
+            )
+    print(
+        f"sweep {exp_id}: {len(algorithms)} algo(s) x {len(combos)} combo(s) x "
+        f"{n_seeds} seed(s) = {len(specs)} runs on {args.workers} workers"
+    )
+    run_block(specs, results_root=args.out, n_workers=args.workers)
+
+    frame = aggregate_runs(args.out, exp_id, r_star=args.r_star)
+    group_cols = ["algorithm", "config_hash", *param_names]
+    ranking = (
+        frame.groupby(group_cols, dropna=False)["eval_mean_reward"]
+        .agg(["mean", "std", "count"])
+        .sort_values("mean", ascending=False)
+        .reset_index()
+    )
+    print("\ntop 5 configurations (mean test reward across seeds):")
+    print(ranking.head(5).to_string(index=False))
+
+    if args.write_optimized:
+        best = ranking.iloc[0]
+        best_overrides = {name: best[name] for name in param_names if name in ranking.columns}
+        best_overrides["algorithm"] = str(best["algorithm"])
+        best_config = dataclasses.replace(base, **best_overrides)
+        write_optimized_yaml(
+            best_config,
+            OPTIMIZED_CONFIG_PATH,
+            note=(
+                f"Grid-search winner of '{exp_id}' "
+                f"(mean test reward {best['mean']:.3f} over {int(best['count'])} seeds)."
+            ),
+        )
+        print(f"\noptimized configuration written to {OPTIMIZED_CONFIG_PATH}")
+    return 0
 
 
 def cmd_compare(args: argparse.Namespace) -> int:
-    print("the compare command lands with feature/benchmarking-viz")
-    return 2
+    """Head-to-head agent comparison under identical conditions."""
+    import dataclasses
+
+    from src.benchmarking.benchmarker import RunSpec, aggregate_runs, run_block
+    from src.benchmarking.stats import apply_holm, compare_groups
+
+    algorithms = [name.strip() for name in args.agents.split(",") if name.strip()]
+    base = Config()
+    if args.n_train_episodes is not None:
+        base = dataclasses.replace(base, n_train_episodes=args.n_train_episodes)
+    if args.n_test_episodes is not None:
+        base = dataclasses.replace(base, n_test_episodes=args.n_test_episodes)
+
+    specs = [
+        RunSpec(
+            exp_id="compare",
+            config=dataclasses.replace(base, algorithm=algorithm),
+            seed=base.seed + k,
+        )
+        for algorithm in algorithms
+        for k in range(args.n_seeds)
+    ]
+    print(f"compare: {len(algorithms)} agents x {args.n_seeds} seeds = {len(specs)} runs")
+    run_block(specs, results_root=args.out, n_workers=args.workers)
+
+    frame = aggregate_runs(args.out, "compare")
+    frame = frame[frame["algorithm"].isin(algorithms)]
+    table = (
+        frame.groupby("algorithm")
+        .agg(
+            reward=("eval_mean_reward", "mean"),
+            reward_std=("eval_mean_reward", "std"),
+            steps=("eval_mean_steps", "mean"),
+            success=("eval_success_rate", "mean"),
+            train_s=("train_wall_time_s", "mean"),
+            memory_kb=("memory_bytes", lambda b: b.mean() / 1024),
+        )
+        .sort_values("reward", ascending=False)
+    )
+    print("\ncomparison (means over seeds, identical eval episodes):")
+    print(table.round(3).to_string())
+
+    reference = "q_learning" if "q_learning" in algorithms else algorithms[0]
+    reference_rewards = frame[frame["algorithm"] == reference]["eval_mean_reward"].tolist()
+    comparisons = [
+        compare_groups(
+            frame[frame["algorithm"] == algorithm]["eval_mean_reward"].tolist(),
+            reference_rewards,
+            algorithm,
+            reference,
+        )
+        for algorithm in algorithms
+        if algorithm != reference
+    ]
+    if comparisons:
+        apply_holm(comparisons)
+        print(f"\npairwise tests vs {reference} (Holm-corrected):")
+        for comparison in comparisons:
+            print("  " + comparison.format_fr())
+    return 0
