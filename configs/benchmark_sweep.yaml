@@ -1,0 +1,29 @@
+# Grid-search definition consumed by `taxi-driver benchmark`.
+# Mirrors block E1a of docs/PROTOCOLE.md: 5 alpha x 4 gamma x 10 seeds.
+#
+# Notes (protocol §9):
+# - n_seeds is 10 (CADRAGE §6.5); reduce only for exploratory sweeps.
+# - epsilon decay is expressed as a horizon fraction (decay_frac) so that the
+#   sweep varies the decay SHAPE, not the total exploration budget.
+# - early stopping stays disabled: stopping some configurations earlier than
+#   others would bias every convergence metric.
+
+exp_id: sweep
+algorithms: [q_learning]
+n_seeds: 10
+seed_base: 42
+
+base:
+  n_train_episodes: 15000
+  n_test_episodes: 100
+  eval_interval: 100
+  n_probe_episodes: 30
+  epsilon: 1.0
+  epsilon_min: 0.01
+  decay_type: exp
+  decay_frac: 0.6
+  early_stopping: false
+
+sweep:
+  alpha: [0.05, 0.1, 0.15, 0.2, 0.3]
+  gamma: [0.9, 0.95, 0.99, 0.999]

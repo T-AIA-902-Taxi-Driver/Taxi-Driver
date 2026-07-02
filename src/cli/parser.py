@@ -94,18 +94,30 @@ def build_parser() -> argparse.ArgumentParser:
     play.add_argument("--seed", type=int, default=None)
 
     benchmark = subparsers.add_parser(
-        "benchmark", help="run the experiment campaign (feature/benchmarking-viz)"
+        "benchmark", help="hyperparameter sweep defined by a YAML grid"
     )
     benchmark.add_argument("--sweep-config", default="configs/benchmark_sweep.yaml")
     benchmark.add_argument("--out", default="results")
-
-    compare = subparsers.add_parser(
-        "compare", help="compare agents head-to-head (feature/benchmarking-viz)"
+    benchmark.add_argument("--workers", type=int, default=6)
+    benchmark.add_argument(
+        "--r-star",
+        dest="r_star",
+        type=float,
+        default=None,
+        help="optimal reference reward for episodes-to-threshold aggregation",
     )
+    benchmark.add_argument(
+        "--write-optimized",
+        action="store_true",
+        help="write the winning configuration to configs/optimized.yaml",
+    )
+
+    compare = subparsers.add_parser("compare", help="compare agents head-to-head")
     compare.add_argument("--agents", default="brute_force,q_learning,sarsa")
     compare.add_argument("--train-episodes", dest="n_train_episodes", type=int, default=None)
     compare.add_argument("--test-episodes", dest="n_test_episodes", type=int, default=None)
     compare.add_argument("--n-seeds", type=int, default=5)
     compare.add_argument("--out", default="results")
+    compare.add_argument("--workers", type=int, default=6)
 
     return parser
