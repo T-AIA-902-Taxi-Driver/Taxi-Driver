@@ -34,17 +34,21 @@ Thumbs.db
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .mypy_cache/
+.ruff_cache/
 
-# Models & results (keep structure via .gitkeep)
-models/*.npy
-models/*.pt
-models/*.pth
-models/*.pkl
-results/*.png
-results/*.csv
-results/*.json
+# Models: raw checkpoints are ignored, final deliverable models are committed
+models/*
+!models/.gitkeep
+!models/final/
+
+# Results: raw experiment data is ignored, aggregated tables and figures are committed
+results/*
+!results/.gitkeep
+!results/aggregated/
+!results/figures/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -52,3 +56,6 @@ results/*.json
 # Environment variables
 .env
 .env.*
+
+# TrackMania / tmrl local data
+TmrlData/
