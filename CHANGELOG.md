@@ -22,6 +22,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - Utilitaires de reproductibilité (`src/utils/seeding.py`) : flux RNG indépendants,
   listes de seeds d'évaluation et de sondes disjointes
 - Configuration par défaut commentée (`configs/default.yaml`)
+- Extension TrackMania (bonus deep RL) : `TMEnvProtocol` + `TrackManiaEnvWrapper`
+  (observations LIDAR aplaties/normalisées Box(83,), actions continues bornées),
+  script SAC autonome `scripts/train_trackmania.py`, guide `docs/TRACKMANIA.md` —
+  code livrable testé sur environnement factice (le jeu n'est pas exécutable en CI)
 - Agents RL tabulaires : `BaseAgent` (contrat terminated-vs-truncated), stratégies
   d'exploration enfichables (ε-greedy exp/linéaire, Boltzmann, UCB), `TabularAgent`
   (argmax greedy déterministe, save/load npz), Q-Learning, SARSA, Expected SARSA,
@@ -35,6 +39,15 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   le statut « livré »), capacité 2, règles pickup/dropoff déterministes
   (plus petit indice), dépose hors destination interdite, TimeLimit 500 ;
   analyse d'ordre de route (`route_analysis.py`) ; protocole `EnvWrapper` partagé
+- Pipeline d'entraînement : `Trainer` générique (contrat terminated-vs-truncated,
+  sondes greedy périodiques), callbacks (Logging, EarlyStopping opt-in, Checkpoint,
+  TimeBudget à horloge injectable), `Evaluator` (politique greedy stricte, seeds
+  d'évaluation explicites par épisode, affichage d'épisodes aléatoires), métriques
+  (moyennes/écarts-types/médianes, IC 95 %, percentiles, temps moyen par partie)
+- CLI `taxi-driver` : sous-commandes train/eval/play (benchmark/compare à venir),
+  mode utilisateur interactif (saisie des hyperparamètres et des nombres d'épisodes
+  au lancement), mode time-limited (config optimisée, budget temps 90/10),
+  auto-détection de l'algorithme depuis les métadonnées du modèle ; smoke test CI
 
 ### Changed
 
