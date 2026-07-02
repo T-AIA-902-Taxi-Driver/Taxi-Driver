@@ -172,11 +172,13 @@ def cmd_train(args: argparse.Namespace) -> int:
         f"({history.stop_reason})"
     )
 
+    # Torch checkpoints for DQN, compressed numpy archives for tabular agents.
+    suffix = ".pt" if config.algorithm == "dqn" else ".npz"
     model_path = Path(
         args.save
         if getattr(args, "save", None)
         else Path(config.model_path)
-        / f"{config.algorithm}_{datetime.datetime.now():%Y%m%dT%H%M%S}.npz"
+        / f"{config.algorithm}_{datetime.datetime.now():%Y%m%dT%H%M%S}{suffix}"
     )
     agent.save(model_path)
     print(f"model saved to {model_path}")
@@ -199,6 +201,16 @@ def cmd_train(args: argparse.Namespace) -> int:
 
 
 def _load_model_metadata(path: Path) -> dict[str, object]:
+    """Read the metadata dict embedded in a saved model (.npz or .pt)."""
+    if path.suffix == ".pt":
+        # DQN torch checkpoint. Lazy import: the tabular path never pays torch.
+        import torch
+
+        checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+        metadata = checkpoint.get("metadata") if isinstance(checkpoint, dict) else None
+        if not isinstance(metadata, dict):
+            raise ValueError(f"{path} does not contain model metadata")
+        return dict(metadata)
     data = np.load(path, allow_pickle=False)
     if "metadata" not in data:
         raise ValueError(f"{path} does not contain model metadata")

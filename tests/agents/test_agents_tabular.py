@@ -44,9 +44,11 @@ class TestBaseContracts:
         assert isinstance(agent, QLearningAgent)
         assert agent.q_table.shape == (fake_env.n_states, fake_env.n_actions)
 
-    def test_create_agent_dqn_not_yet_available(self, fake_env: object) -> None:
-        with pytest.raises(ImportError):
-            create_agent(Config(algorithm="dqn"), fake_env)
+    def test_create_agent_resolves_dqn_lazily(self, fake_env: object) -> None:
+        from src.agents.dqn.dqn_agent import DQNAgent
+
+        agent = create_agent(Config(algorithm="dqn", device="cpu"), fake_env)
+        assert isinstance(agent, DQNAgent)
 
     @pytest.mark.parametrize("name", sorted(AGENT_REGISTRY))
     def test_select_action_in_range(self, name: str, fake_env: object) -> None:
