@@ -34,6 +34,16 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   `decode_state()`, hook de reward shaping avec `info["raw_reward"]`, seeding premier-reset,
   graine explicite par épisode pour l'évaluation) + factory `create_env()`
 
+- Pipeline d'entraînement : `Trainer` générique (contrat terminated-vs-truncated,
+  sondes greedy périodiques), callbacks (Logging, EarlyStopping opt-in, Checkpoint,
+  TimeBudget à horloge injectable), `Evaluator` (politique greedy stricte, seeds
+  d'évaluation explicites par épisode, affichage d'épisodes aléatoires), métriques
+  (moyennes/écarts-types/médianes, IC 95 %, percentiles, temps moyen par partie)
+- CLI `taxi-driver` : sous-commandes train/eval/play (benchmark/compare à venir),
+  mode utilisateur interactif (saisie des hyperparamètres et des nombres d'épisodes
+  au lancement), mode time-limited (config optimisée, budget temps 90/10),
+  auto-détection de l'algorithme depuis les métadonnées du modèle ; smoke test CI
+
 ### Changed
 
 - `.gitignore` : les modèles finaux (`models/final/`) et les résultats agrégés/figures
