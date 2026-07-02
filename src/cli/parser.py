@@ -82,7 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_config_overrides(train)
 
     evaluate = subparsers.add_parser("eval", help="evaluate a saved model")
-    evaluate.add_argument("--model", required=True, help="path to a saved model (.npz)")
+    evaluate.add_argument("--model", required=True, help="path to a saved model (.npz / .pt)")
     evaluate.add_argument("--test-episodes", dest="n_test_episodes", type=int, default=None)
     evaluate.add_argument("--show-episodes", type=int, default=None)
     evaluate.add_argument("--seed", type=int, default=None)
