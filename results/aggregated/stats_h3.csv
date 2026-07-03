@@ -1,0 +1,7 @@
+algorithm,intra_algo_reward_range,intra_algo_ett_range
+double_q_learning,0.20399999999999974,8090.0
+expected_sarsa,1.636000000000001,6680.0
+monte_carlo,105.33299999999998,0.0
+q_learning,0.008000000000000895,4580.0
+sarsa,3.5549999999999997,7870.0
+INTER-ALGO (best configs),26.726,
