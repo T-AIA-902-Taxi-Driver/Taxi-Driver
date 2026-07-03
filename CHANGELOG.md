@@ -4,9 +4,34 @@ Toutes les modifications notables apportées à ce projet sont documentées dans
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
-## [Unreleased]
+## [1.0.0] - 2026-07-03
 
 ### Added
+
+- Campagne expérimentale complète E0-E7 : 822 runs, 10 seeds par configuration,
+  R* = 8.05 établi par value iteration ; 5 algorithmes sur 6 atteignent la
+  politique optimale (8.05, 12.95 pas, 100 % succès) — Monte Carlo censuré 10/10
+- Résultats versionnés : agrégats par bloc, tests statistiques H1-H9
+  (Welch/Mann-Whitney, Holm, tailles d'effet), figures F1-F12, modèles finaux
+- `configs/optimized.yaml` définitif : α=0.30, γ=0.95 (départage des 15 configs
+  optimales ex æquo par vitesse de convergence, seuil en 980 épisodes)
+- Rapport scientifique final (`docs/RAPPORT.md`, français) et support de
+  soutenance (`docs/SLIDES.md`, Marp)
+- Scripts d'analyse : `run_stats.py` (hypothèses), `make_figures.py` (figures
+  régénérables depuis les données brutes), pack de chiffres reproductible
+
+### Changed
+
+- README aligné sur l'implémentation réelle (commandes vérifiées), corrections
+  des documents de cadrage (14 400 états multi-passagers, seuil 90 %, early
+  stopping opt-in)
+
+### Fixed
+
+- Seuil de convergence référencé sur l'optimum du jeu de sondes (7.77) et non
+  de l'évaluation (8.05) — évite la censure erronée de runs optimaux
+
+### Added (développement, PRs #59-#67)
 
 - Configuration Poetry complète (`pyproject.toml`) : dépendances (gymnasium <1.3 pour
   Taxi-v3, numpy, torch, matplotlib, seaborn, pandas, scipy), groupe dev (pytest, ruff,

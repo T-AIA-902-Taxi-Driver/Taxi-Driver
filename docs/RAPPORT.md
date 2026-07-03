@@ -385,6 +385,11 @@ La campagne compte **~840 runs** (≈ 4 h 30 – 5 h 30 sur 6 cœurs) :
 | E6 | Multi-passagers : QL et SARSA × 150 000 épisodes | 20 | H9 |
 | E7 | **Chronométrage séquentiel** : 6 algos × 10 seeds + DQN cuda/cpu × 3 | 66 | temps, mémoire, ablation GPU |
 
+La campagne exécutée compte **822 runs** : trois écarts mineurs au
+dimensionnement planifié (le brute force de E2 n'est pas ré-entraîné, mesuré
+en E0/E7 ; E5 réduit à 3 seeds par configuration ; DQN chronométré sur
+2 runs par device en E7) sont documentés au fil de la section 5.
+
 Les blocs E0–E6 sont parallélisés sur 6 processus : la parallélisation
 n'affecte ni les récompenses ni les trajectoires (générateurs indépendants par
 run), la contrainte « pas de parallélisation » ne concernant que les mesures
@@ -445,10 +450,6 @@ tabulaire complète très abordable en temps de calcul.
 
 ## 5. Résultats expérimentaux
 
-<!-- SQUELETTE : les valeurs {{...}} et les figures seront insérées après
-     dépouillement de la campagne. Chaque sous-section suit le même plan :
-     rappel de la prédiction, résultats, test statistique, analyse. -->
-
 ### 5.1 Baseline brute force : ce que « aléatoire » veut dire (E0)
 
 Le sujet exige la comparaison à un agent *brute force* : une politique
@@ -457,31 +458,45 @@ pour un agent aléatoire contre ~13 pour un agent entraîné, soit un facteur ~2
 
 | Agent | Troncature | Reward moyen | Reward médian | Steps moyens | Taux de succès |
 |---|---|---|---|---|---|
-| BruteForce | 200 pas | {{E0_BF200_REWARD}} | {{E0_BF200_REWARD_MEDIAN}} | {{E0_BF200_STEPS}} | {{E0_BF200_SUCCESS}} |
-| BruteForce | 2000 pas | {{E0_BF2000_REWARD}} | {{E0_BF2000_REWARD_MEDIAN}} | {{E0_BF2000_STEPS}} | {{E0_BF2000_SUCCESS}} |
-| Politique optimale (R\*) | 200 pas | 8,05 | — | — | 100 % |
+| BruteForce | 200 pas | −770,2 | −782,3 | 196,5 (médiane 200) | 4,8 % |
+| BruteForce | 2000 pas | −5 428,2 | −6 674,6 | 1 389,6 (médiane 1 714) | 55,7 % |
+| Politique optimale (R\*) | 200 pas | 8,05 | 8,0 | 12,95 | 100 % |
 
 **L'artefact de troncature.** La moyenne de reward à 200 pas est un
 **artefact de mesure**, pas une propriété de la politique aléatoire : la
 plupart des épisodes sont coupés à 200 pas avant résolution, ce qui plafonne
 la pénalité par épisode et écrase la distribution contre la borne. La
 variante à 2000 pas révèle le vrai coût d'une marche aléatoire sur cette
-grille : {{E0_BF2000_STEPS}} pas en moyenne pour résoudre un épisode (médiane
-{{E0_BF2000_STEPS_MEDIAN}}), à confronter aux ~350 annoncés par le sujet. Le
+grille : 1 389,6 pas en moyenne pour résoudre un épisode (médiane
+1 714), à confronter aux ~350 annoncés par le sujet. Le
 ratio de pas entre l'agent aléatoire (mesuré sans troncature) et l'agent
-entraîné s'établit à **{{E0_RATIO_STEPS}}×**.
+entraîné s'établit à **≥ 107×** (1 389,6 / 12,95).
 
-<!-- FIGURE F4: results/figures/F4_barplot_steps.png -->
+![Nombre de pas par épisode, agents vs politique optimale](../results/figures/F4_barplot_steps.png)
 
-**Analyse.**
-<!-- Questions guides :
-  1. Le taux de succès à 200 pas est-il cohérent avec la probabilité qu'une
-     marche aléatoire résolve la tâche en 200 pas (deux actions contextuelles
-     sur 6, dont une seule séquence gagnante) ?
-  2. Pourquoi la médiane de reward est-elle plus honnête que la moyenne pour
-     décrire l'agent aléatoire à 200 pas ?
-  3. Le facteur ~20× annoncé par le sujet est-il retrouvé, et sous quelle
-     définition exacte (steps moyens tronqués ou non) ? -->
+*Figure F4 — Pas moyens par épisode (échelle logarithmique), brute force
+contre agents entraînés et politique optimale ; blocs E0/E2, n = 10 seeds,
+IC 95 %.*
+
+**Analyse.** Le taux de succès de 4,8 % à 200 pas est cohérent avec la
+structure combinatoire de la tâche : une marche uniforme doit non seulement
+atteindre par hasard la case du passager, mais y tirer l'action Pickup (une
+sur six), puis rejouer le même miracle sur la destination avec Dropoff — deux
+événements rares en série dans une fenêtre de 200 pas. La médiane décrit cet
+agent plus honnêtement que la moyenne : la médiane des pas vaut exactement 200
+(la borne de troncature) et celle du reward −782,3, c'est-à-dire que
+l'épisode *typique* n'est pas résolu du tout ; la moyenne de −770,2 n'est
+qu'une combinaison mécanique du plancher −200 et des ~64 manœuvres illégales
+par épisode (−200 + 64 × (−9) ≈ −776), et ne mesure aucune propriété de la
+politique.
+
+Le « ~350 pas » du sujet n'est retrouvé sous aucune définition : tronquée à
+200 pas, la moyenne est mécaniquement bornée à ~196 ; sans troncature
+opérante (cap 2 000), elle s'établit à 1 389,6 pas — et cette valeur reste
+une **sous-estimation**, puisque 44,3 % des épisodes sont encore tronqués à
+2 000 pas. Le facteur honnête random-vs-RL est donc d'**au moins 107×** en
+nombre de pas, très au-delà du ~20× annoncé — une correction factuelle que
+seule la levée de l'artefact de troncature rend visible.
 
 ### 5.2 Grid search et sensibilité aux hyperparamètres (E1a, E1b — H1, H3)
 
@@ -493,42 +508,102 @@ variabilité induite par les hyperparamètres **au sein** d'un algorithme excèd
 celle observée **entre** algorithmes à configuration égale.
 
 La grille E1a (Q-Learning, 5 valeurs de α × 4 valeurs de γ × 10 seeds
-= 200 runs) donne la cartographie suivante :
+= 200 runs) donne la cartographie suivante — chaque cellule rapporte le
+reward final moyen d'évaluation et les épisodes-au-seuil moyens (aucun run
+censuré sur les 200) :
 
-{{T_E1_GRID}}
+| α \ γ | 0,9 | 0,95 | 0,99 | 0,999 |
+|---|---|---|---|---|
+| 0,05 | 8,050 / 5 470 | 8,050 / 4 890 | 8,050 / 4 590 | 8,050 / 4 520 |
+| 0,10 | 8,050 / 2 690 | 8,050 / 2 650 | 8,048 / 2 640 | 8,050 / 2 600 |
+| 0,15 | 8,050 / 1 930 | 8,050 / 1 790 | 8,048 / 1 710 | 8,050 / 1 640 |
+| 0,20 | 8,050 / 1 520 | 8,050 / 1 530 | 8,048 / 1 290 | 8,050 / 1 520 |
+| 0,30 | 8,050 / 1 130 | **8,050 / 980** | 8,046 / 990 | 8,042 / 890 |
 
-<!-- FIGURE F5: results/figures/F5_heatmap_grid.png -->
-<!-- FIGURE F5b: results/figures/F5b_heatmap_convergence.png -->
-<!-- FIGURE F6a: results/figures/F6a_sensibilite_alpha.png -->
-<!-- FIGURE F6b: results/figures/F6b_sensibilite_gamma.png -->
+*Tableau — Grille E1a : reward final / épisodes-au-seuil (moyennes, n = 10
+seeds par cellule). En gras : la cellule promue dans `configs/optimized.yaml`.*
+
+![Heatmap du reward final sur la grille (α, γ)](../results/figures/F5_heatmap_grid.png)
+
+*Figure F5 — Reward final d'évaluation sur la grille (α, γ) du Q-Learning ;
+bloc E1a, n = 10 seeds par cellule.*
+
+![Heatmap des épisodes-au-seuil sur la grille (α, γ)](../results/figures/F5b_heatmap_convergence.png)
+
+*Figure F5b — Épisodes jusqu'au seuil de convergence (0,9·R\*, 3 checkpoints
+maintenus) sur la même grille ; bloc E1a, n = 10 seeds par cellule.*
+
+![Sensibilité à alpha](../results/figures/F6a_sensibilite_alpha.png)
+
+*Figure F6a — Sensibilité à α à γ = 0,99 (sondes greedy) ; bloc E1a, n = 10
+seeds, lissage 100.*
+
+![Sensibilité à gamma](../results/figures/F6b_sensibilite_gamma.png)
+
+*Figure F6b — Sensibilité à γ à α = 0,15 (sondes greedy) ; bloc E1a, n = 10
+seeds, lissage 100.*
 
 **Test de H1** (famille Holm « H1 », γ = 0,99 vs γ = 0,9 à α = 0,15) :
 
-- Épisodes-au-seuil : γ = 0,99 : {{H1_SEUIL_G99}} vs γ = 0,9 : {{H1_SEUIL_G90}} ; {{H1_TEST_SEUIL}}
-- Reward final : γ = 0,99 : {{H1_REWARD_G99}} vs γ = 0,9 : {{H1_REWARD_G90}} ; {{H1_TEST_REWARD}}
+- Épisodes-au-seuil : γ = 0,99 : 1 710 ± 363 (IC 95 % [1 450 ; 1 970],
+  n = 10) vs γ = 0,9 : 1 930 ± 320 (IC 95 % [1 701 ; 2 159], n = 10) ;
+  Welch, p = 0,168, p_Holm = 0,336, g = −0,62, δ = −0,44.
+- Reward final : γ = 0,99 : 8,048 ± 0,006 (IC 95 % [8,043 ; 8,053], n = 10)
+  vs γ = 0,9 : 8,050 ± 0,000 (IC 95 % [8,05 ; 8,05], n = 10) ; Mann-Whitney
+  (normalité rejetée), p = 0,368, p_Holm = 0,368, δ = −0,10.
 
-Verdict H1 : {{H1_VERDICT}}
+Verdict H1 : **infirmée dans ses deux volets**. γ = 0,99 ne converge pas plus
+lentement que γ = 0,9 — la tendance observée est même inverse (1 710 contre
+1 930 épisodes, g = −0,62), sans atteindre la significativité — et ne produit
+pas de meilleure politique finale, les deux configurations atteignant
+l'optimum à l'épaisseur du trait près. C'est la contre-prédiction du
+protocole qui est confortée : les épisodes optimaux étant courts (~13 pas),
+tout γ de la gamme suffit à couvrir l'horizon utile ; un γ élevé aide même
+légèrement, le signal terminal +20 parvenant aux états initiaux à hauteur de
+γ¹³ ≈ 0,88 pour γ = 0,99 contre 0,25 pour γ = 0,9.
 
 **Test de H3.** L'étendue des performances finales à travers la grille
-d'hyperparamètres, au sein du seul Q-Learning, vaut {{H3_ETENDUE_INTRA}} ;
-l'étendue entre les cinq algorithmes tabulaires à la configuration de
-référence vaut {{H3_ETENDUE_INTER}}. La part de variance expliquée
-(η² descriptif, bootstrap) attribue {{H3_ETA2}} aux hyperparamètres.
-Verdict H3 : {{H3_VERDICT}}
+d'hyperparamètres, au sein du seul Q-Learning, vaut 0,008 point de reward
+(cellules moyennes de 8,042 à 8,050) — mais 4 580 épisodes sur l'axe
+cinétique (890 à 5 470) ; l'étendue entre les cinq algorithmes tabulaires,
+chacun pris à sa meilleure configuration, vaut 26,7 points de reward,
+entièrement imputable à Monte Carlo (au mieux −18,7). La décomposition de
+variance descriptive (η², E1a ∪ E1b restreintes aux cellules communes)
+attribue **56 % de la variance des épisodes-au-seuil aux hyperparamètres
+contre 18 % à l'algorithme** (méthodes TD, censures au budget) ; sur le
+reward final, l'inclusion de Monte Carlo inverse le rapport (53 %
+algorithme, 43 % hyperparamètres).
+Verdict H3 : **confirmée sur l'axe cinétique, infirmée sur la qualité
+finale** — au sein des méthodes TD, le réglage de α pèse plus que l'étiquette
+de l'algorithme sur la vitesse ; mais dès que la famille algorithmique change
+réellement de propriétés (Monte Carlo), c'est elle qui domine la variance.
 
-La meilleure cellule de la grille — α = {{E1_BEST_ALPHA}},
-γ = {{E1_BEST_GAMMA}}, reward final {{E1_BEST_REWARD}} — est promue dans
+La meilleure cellule de la grille — α = 0,30, γ = 0,95, reward final 8,050,
+seuil atteint en 980 épisodes — est promue dans
 `configs/optimized.yaml` et alimente le mode time-limited (section 5.8).
 
-**Analyse.**
-<!-- Questions guides :
-  1. La surface de réponse est-elle un plateau (large bassin de configurations
-     quasi optimales) ou un pic étroit ? Qu'est-ce que cela implique pour le
-     tuning en pratique ?
-  2. α élevé (0,3) accélère-t-il la convergence au prix d'un bruit résiduel en
-     fin d'entraînement (politique greedy instable entre checkpoints) ?
-  3. γ = 0,999 pose-t-il un problème spécifique (propagation lente des valeurs,
-     quasi-absence d'actualisation) visible dans les épisodes-au-seuil ? -->
+**Analyse.** La surface de réponse est un **plateau asymptotique traversé
+d'un fort gradient cinétique** : 15 cellules sur 20 atteignent exactement la
+politique optimale (8,05 de reward, 12,95 pas, 100 % de succès), et les cinq
+autres n'en sont séparées que de 0,002 à 0,008 point. Le choix
+d'hyperparamètres ne se joue donc pas sur « où l'on arrive » mais sur « à
+quelle vitesse » : à γ fixé, α fait varier les épisodes-au-seuil de 5 470
+(α = 0,05) à 890 (α = 0,30), un facteur 6, de façon monotone — c'est α qui
+commande la cinétique, γ n'apportant qu'un effet de second ordre. Pour le
+tuning en pratique, un bassin aussi large signifie qu'un réglage grossier
+suffit à la performance finale, et que la grille ne sert en réalité qu'à
+optimiser le temps de convergence.
+
+Le seul coût visible d'un α agressif apparaît dans le coin α = 0,30 ×
+γ ≥ 0,99 : les deux cellules y descendent à 8,046 et 8,042, trahissant un
+bruit résiduel de fin d'entraînement — avec de grands pas d'apprentissage et
+un horizon long, quelques valeurs Q restent en léger désordre et la politique
+greedy de l'une ou l'autre seed dévie d'un pas sur certains états initiaux.
+γ = 0,999 ne pose en revanche aucun problème de propagation : c'est même la
+colonne la plus rapide à α = 0,30 (890 épisodes), mais cette cellule est
+précisément celle qui rate l'optimum exact — d'où son exclusion au profit de
+α = 0,30 / γ = 0,95 (980 épisodes), départage des 15 ex æquo par la vitesse
+sous contrainte d'optimalité stricte.
 
 ### 5.3 Face-à-face des algorithmes tabulaires (E2 — H2, H7, H8)
 
@@ -541,53 +616,139 @@ la moitié des transitions). H8 : Monte Carlo, sans bootstrapping et exposé aux
 retours tronqués, est plus lent et plus variable, avec des runs possiblement
 censurés.
 
-Les six algorithmes tabulaires et le DQN sont entraînés à la configuration de
-référence (α = 0,15, γ = 0,99, ε : 1,0 → 0,01, n = 10 seeds) :
+Les cinq algorithmes tabulaires et le DQN sont entraînés à la configuration
+de référence (α = 0,15, γ = 0,99, ε : 1,0 → 0,01, n = 10 seeds) :
 
-{{T1_FACE_A_FACE}}
+| Algorithme | Reward final ± σ | Pas | Succès | Épisodes-au-seuil (censures) | Temps E7 (s) | Inférence (ms) | Mémoire (Ko) |
+|---|---|---|---|---|---|---|---|
+| Q-Learning | 8,048 ± 0,006 | 12,95 | 100 % | 1 710 ± 363 (0) | 12,2 | 0,25 | 23,4 |
+| SARSA | 7,974 ± 0,040 | 13,03 | 100 % | 3 910 ± 559 (0) | 14,1 | 0,26 | 23,4 |
+| Expected SARSA | 8,050 ± 0,000 | 12,95 | 100 % | 3 930 ± 116 (0) | 20,1 | 0,25 | 23,4 |
+| Double Q-Learning | 8,050 ± 0,000 | 12,95 | 100 % | 3 170 ± 419 (0) | 14,6 | 0,27 | 46,9 |
+| Monte Carlo | −19,33 ± 9,88 | 37,67 | 87,3 % | — (10/10 censurés) | 23,7 | 0,62 | 46,9 |
+| DQN (5 000 ép.) | 8,050 ± 0,000 | 12,95 | 100 % | 380 ± 132 (0) | 383,9 | 4,77 | 2 052,1 |
 
-<!-- FIGURE F1: results/figures/F1_courbes_apprentissage.png -->
-<!-- FIGURE F2: results/figures/F2_courbes_steps.png -->
-<!-- FIGURE F3: results/figures/F3_boxplots_rewards.png -->
+*Tableau T1 — Face-à-face à la configuration de référence ; bloc E2 (n = 10
+seeds), colonnes de coût issues du bloc E7 séquentiel. R\* = 8,05, 12,95 pas.*
+
+![Courbes d'apprentissage](../results/figures/F1_courbes_apprentissage.png)
+
+*Figure F1 — Courbes d'apprentissage (récompense d'entraînement) des six
+algorithmes ; bloc E2, n = 10 seeds, lissage 100.*
+
+![Pas par épisode](../results/figures/F2_courbes_steps.png)
+
+*Figure F2 — Nombre de pas par épisode au fil de l'entraînement ; bloc E2,
+n = 10 seeds, lissage 100.*
+
+![Boxplots des rewards d'évaluation](../results/figures/F3_boxplots_rewards.png)
+
+*Figure F3 — Distribution des rewards d'évaluation finale (100 épisodes
+figés) par algorithme ; bloc E2, n = 10 seeds.*
 
 **Test de H2** (famille Holm « H2 ») :
 
-- Épisodes-au-seuil : QL : {{H2_SEUIL_QL}} vs SARSA : {{H2_SEUIL_SARSA}} ; {{H2_TEST_SEUIL}}
-- Stabilité (σ du reward d'entraînement par run) : QL : {{H2_SIGMA_QL}} vs SARSA : {{H2_SIGMA_SARSA}} ; {{H2_TEST_SIGMA}}
+- Épisodes-au-seuil : QL : 1 710 ± 363 (IC 95 % [1 450 ; 1 970], n = 10) vs
+  SARSA : 3 910 ± 559 (IC 95 % [3 510 ; 4 310], n = 10) ; Welch,
+  p = 2,1×10⁻⁸, p_Holm = 6,3×10⁻⁸, g = −4,47, δ = −1,00.
+- Stabilité (σ du reward d'entraînement post-convergence, par run) : QL :
+  3,18 ± 0,39 (IC 95 % [2,90 ; 3,46], n = 10) vs SARSA : 3,54 ± 0,47
+  (IC 95 % [3,20 ; 3,87], n = 10) ; Welch, p = 0,080, p_Holm = 0,080,
+  g = −0,80 — tendance dans le sens **inverse** de la prédiction, non
+  significative.
+- Plafond de SARSA : reward final QL 8,048 ± 0,006 vs SARSA 7,974 ± 0,040
+  (IC 95 % [7,946 ; 8,002], n = 10) ; Mann-Whitney (normalité rejetée pour
+  QL), p = 1,0×10⁻⁴, p_Holm = 2,0×10⁻⁴, δ = 0,99.
 
-Verdict H2 : {{H2_VERDICT}}
+Verdict H2 : **confirmée pour la vitesse, infirmée pour la stabilité,
+enrichie d'un plafond inattendu**. L'off-policy converge 2,3× plus vite —
+le Q-Learning apprend la politique greedy pendant que son comportement
+explore encore, là où SARSA doit attendre que ε décroisse pour que sa cible
+cesse d'intégrer le coût de l'exploration. Mais SARSA n'est pas plus stable
+(σ post-convergence 3,54 contre 3,18, sens inverse, NS), et surtout il
+**plafonne significativement sous l'optimum** (7,974 < 8,05) : avec
+ε_min = 0,01, ses cibles on-policy restent contaminées par une part
+résiduelle d'actions exploratoires, et la Q-table qu'il fige en fin
+d'entraînement encode cette prudence de trop — 13,03 pas au lieu de 12,95.
 
-**Test de H7.** Le gap de surestimation (moyenne de max_a Q(s₀, a) sur les
-états initiaux d'évaluation, moins le retour greedy réellement obtenu) vaut
-{{H7_GAP_QL}} pour le Q-Learning contre {{H7_GAP_DQL}} pour le Double
-Q-Learning ({{H7_TEST_GAP}}). Les épisodes-au-seuil du Double Q-Learning
-s'établissent à {{H7_SEUIL_DQL}}. Verdict H7 : {{H7_VERDICT}}
+**Test de H7.** Les épisodes-au-seuil du Double Q-Learning s'établissent à
+3 170 ± 419 (IC 95 % [2 870 ; 3 470], n = 10) contre 1 710 ± 363 pour le
+Q-Learning ; Welch, p = 1,6×10⁻⁷, p_Holm = 3,2×10⁻⁷, g = −3,56, δ = −1,00 —
+soit 1,85× plus lent. Sa stabilité post-convergence n'est **pas** meilleure :
+3,53 ± 0,32 contre 3,18 ± 0,39 ; Welch, p = 0,042, p_Holm = 0,042,
+g = −0,94 — significatif dans le sens inverse de la prédiction. Quant au
+biais : en fin d'entraînement, l'écart entre max_a Q(s₀, a) sur les états de
+sonde et la valeur optimale actualisée V\*_γ=0,99 (calculée par value
+iteration) vaut −0,005 ± 0,003 pour le Q-Learning contre −0,349 ± 0,072 pour
+le Double Q-Learning (estimateur par table (Q_A + Q_B)/2) ; Mann-Whitney
+descriptif hors famille Holm, p = 1,8×10⁻⁴, δ = 1,00. Verdict H7 :
+**demi-confirmée** — le ralentissement prédit est là (le prix des
+échantillons partagés entre deux tables), la surestimation du Q-Learning est
+bien visible **pendant** l'apprentissage (figure F10 : son estimé max-Q
+domine longuement le retour que sa politique greedy réalise), mais elle se
+résorbe entièrement à convergence, tandis que le Double Q-Learning, plus
+conservateur, sous-estime encore à budget épuisé — et sa stabilité promise ne
+se matérialise pas.
 
-<!-- FIGURE F10: results/figures/F10_surestimation.png -->
+![Biais de surestimation](../results/figures/F10_surestimation.png)
 
-**Test de H8.** Monte Carlo atteint le seuil en {{H8_SEUIL_MC}} épisodes
-(taux de convergence : {{H8_TAUX_CONV_MC}} des runs ; les runs censurés sont
-traités au rang le pire) ; {{H8_TEST}}. Verdict H8 : {{H8_VERDICT}}
+*Figure F10 — Estimé max-Q sur les états de sonde vs retour greedy réalisé,
+Q-Learning contre Double Q-Learning ; bloc E2, n = 10 seeds (l'estimé du
+Double QL agrège Q_A + Q_B, soit deux fois la valeur par table).*
+
+**Test de H8.** Monte Carlo n'atteint **jamais** le seuil : 0 run sur 10 en
+15 000 épisodes (censure 10/10, traitée au rang le pire) ; contre
+Q-Learning : Mann-Whitney, p = 6,0×10⁻⁵, p_Holm = 1,2×10⁻⁴, δ = 1,00 ;
+contre SARSA : p = 6,3×10⁻⁵, p_Holm = 1,2×10⁻⁴, δ = 1,00. Verdict H8 :
+**confirmée au maximum observable** — la prédiction « plus lent et plus
+variable » était encore optimiste, l'algorithme ne converge simplement pas
+dans le budget.
 
 À titre de synthèse sur l'évaluation finale (100 épisodes figés) :
-QL : {{E2_QL_REWARD}} ; SARSA : {{E2_SARSA_REWARD}} ;
-Expected SARSA : {{E2_EXPSARSA_REWARD}} ; Double QL : {{E2_DQL_REWARD}} ;
-MC : {{E2_MC_REWARD}} ; DQN : {{E2_DQN_REWARD}} — à comparer à R\* = 8,05.
+QL : 8,048 ± 0,006 ; SARSA : 7,974 ± 0,040 ;
+Expected SARSA : 8,050 ± 0,000 ; Double QL : 8,050 ± 0,000 ;
+MC : −19,33 ± 9,88 ; DQN : 8,050 ± 0,000 — à comparer à R\* = 8,05.
 
-<!-- FIGURE F11: results/figures/F11_heatmap_qvalues.png -->
+![Heatmap des valeurs Q apprises](../results/figures/F11_heatmap_qvalues.png)
 
-**Analyse.**
-<!-- Questions guides :
-  1. Les différences entre algorithmes sont-elles cinétiques (vitesse) ou
-     asymptotiques (politique finale) ? Tous les non-censurés rejoignent-ils
-     R* à ±IC près ?
-  2. Le σ d'entraînement plus faible de SARSA (s'il est confirmé) provient-il
-     de l'évitement des −10 pendant l'exploration ? Vérifier via le taux de
-     pénalités d'entraînement.
-  3. Expected SARSA se comporte-t-il comme un SARSA débruité (même trajectoire
-     moyenne, variance réduite), conformément à van Seijen et al. (2009) ?
-  4. Les runs MC censurés partagent-ils une signature (boucles de politiques
-     sous troncature, retours biaisés) visible dans les courbes de sonde ? -->
+*Figure F11 — Valeurs Q apprises (max par état, projeté sur la grille) du
+meilleur run Q-Learning ; bloc E2. Le gradient de valeur épouse le chemin
+optimal vers l'objectif courant.*
+
+**Analyse.** Les différences sont presque exclusivement **cinétiques** :
+quatre algorithmes sur six terminent exactement sur la politique optimale
+(8,05 ± 0,00, 12,95 pas, 100 % de succès — neuf seeds sur dix pour le
+Q-Learning, une seule à 8,03), et se distinguent uniquement par leurs
+épisodes-au-seuil, de 1 710 (QL) à 3 930 (Expected SARSA). Les deux
+exceptions sont instructives précisément parce qu'elles sont asymptotiques :
+le plafond on-policy de SARSA (7,974, significatif) et l'échec structurel de
+Monte Carlo.
+
+La prédiction de stabilité de SARSA reposait sur l'évitement des −10 pendant
+l'exploration ; elle ne se matérialise pas, et pour cause : sur ce MDP
+déterministe, une fois ε réduit, le seul risque résiduel est l'action
+exploratoire elle-même (probabilité 0,01), qui frappe les deux algorithmes à
+l'identique — le « cliff walking » qui donne l'avantage à SARSA exige un
+environnement où l'erreur coûte cher au voisinage du chemin optimal, ce que
+Taxi-v3 n'est pas. Expected SARSA se comporte exactement comme le SARSA
+débruité de van Seijen et al. (2009) : même famille on-policy, mêmes
+épisodes-au-seuil moyens que SARSA (3 930 contre 3 910), mais un écart-type
+inter-seeds divisé par cinq (± 116 contre ± 559) — l'espérance sur π supprime
+la variance du tirage de a′ — et, l'aléa en moins, il rejoint l'optimum exact
+(8,050) là où SARSA plafonne.
+
+Les dix runs Monte Carlo partagent la même signature : premiers épisodes
+tronqués à 200 pas, retours complets de l'ordre de −700 d'une variance
+énorme, et une moyenne incrémentale first-visit — insensible à α, qui ne
+paramètre d'ailleurs aucune de ses mises à jour — beaucoup trop lente à
+oublier ces premières estimations catastrophiques. Les courbes de sonde
+plafonnent très loin du seuil (reward final −19,33 en moyenne, de −42,4 à
+−4,4 selon la seed, 87,3 % de succès en 37,7 pas), et le σ post-convergence
+de 59,9 — contre ~3,2 pour les méthodes TD — confirme que la politique greedy
+de MC n'est jamais stabilisée. La grille E1b enfonce le clou : son étendue
+intra-algorithme atteint 105,3 points de reward entre cellules (−124,0 à
+γ = 0,9), une sensibilité aux hyperparamètres d'un autre ordre de grandeur
+que celle des méthodes TD.
 
 ### 5.4 Stratégies d'exploration (E3 — H4)
 
@@ -600,27 +761,73 @@ au coefficient c.
 Les quatre stratégies sont comparées sur Q-Learning à configuration de
 référence, seule l'exploration variant :
 
-{{T_E3_EXPLORATION}}
+| Stratégie | Reward final ± σ | Épisodes-au-seuil ± σ | Premier succès ± σ | Env-steps d'entraînement |
+|---|---|---|---|---|
+| ε-greedy exponentielle (réf.) | 8,048 ± 0,006 | 1 710 ± 363 | 26,4 ± 21,7 | 333 921 |
+| ε-greedy linéaire | 8,050 ± 0,000 | **1 320 ± 123** | 35,4 ± 24,3 | 579 260 |
+| Boltzmann | 8,050 ± 0,000 | 2 080 ± 416 | 12,1 ± 15,2 | 271 890 |
+| UCB (c = 2) | 8,050 ± 0,000 | 1 850 ± 178 | **7,9 ± 6,1** | 251 547 |
 
-- Épisodes-au-seuil : ε-exp : {{H4_SEUIL_EXP}} ; ε-lin : {{H4_SEUIL_LIN}} ;
-  Boltzmann : {{H4_SEUIL_BOLTZ}} ; UCB : {{H4_SEUIL_UCB}}
-- Couverture des paires (s, a) à 1000 épisodes : ε-greedy :
-  {{H4_COUVERTURE_EPS}} vs UCB : {{H4_COUVERTURE_UCB}}
-- Tests appariés contre la référence ε-exp (famille Holm « H4 ») : {{H4_TESTS}}
+*Tableau — Stratégies d'exploration sur Q-Learning ; bloc E3, n = 10 seeds,
+100 % de succès et 12,95 pas partout en évaluation finale.*
 
-Verdict H4 : {{H4_VERDICT}}
+- Épisodes-au-seuil : ε-exp : 1 710 ± 363 ; ε-lin : 1 320 ± 123 (IC 95 %
+  [1 232 ; 1 408], n = 10) ; Boltzmann : 2 080 ± 416 (IC 95 %
+  [1 783 ; 2 377]) ; UCB : 1 850 ± 178 (IC 95 % [1 723 ; 1 977]).
+- Couverture des paires (s, a) : la sonde de couverture prévue au protocole
+  n'a pas été instrumentée dans la campagne finale ; deux proxys mesurés en
+  tiennent lieu — le premier épisode de succès (UCB : 7,9 ± 6,1 contre
+  26,4 ± 21,7 pour ε-exp) et les env-steps d'entraînement consommés (UCB :
+  251 547 contre 333 921), tous deux cohérents avec une exploration précoce
+  mieux dirigée.
+- Tests appariés contre la référence ε-exp (famille Holm « H4 ») :
+  ε-lin, épisodes-au-seuil : Mann-Whitney, p = 0,0030, **p_Holm = 0,027**,
+  g = −1,38, δ = −0,78 ; Boltzmann : Welch, p = 0,049, p_Holm = 0,340,
+  g = +0,91 (Mann-Whitney secondaire p = 0,061) ; UCB : Welch, p = 0,294,
+  p_Holm = 1,0, g = +0,47. Premier succès : UCB : Mann-Whitney, p = 0,014,
+  p_Holm = 0,111, δ = −0,66 ; Boltzmann : p = 0,063, p_Holm = 0,381,
+  δ = −0,50. Rewards finaux : tous p_Holm = 1,0.
 
-<!-- FIGURE F7: results/figures/F7_exploration.png -->
+Verdict H4 : **partiellement confirmée, avec une surprise significative**.
+La performance finale est bien insensible à la stratégie (8,05 partout),
+mais la décroissance linéaire ne fait pas que « valoir » l'exponentielle :
+elle la **bat** sur la vitesse de convergence (1 320 contre 1 710 épisodes,
+p_Holm = 0,027, g = −1,38) — le seul résultat du bloc qui survit à Holm.
+Boltzmann ne converge pas plus vite (tendance inverse, NS après Holm) ; UCB
+explore de façon visiblement mieux dirigée en début d'entraînement sans que
+cela se convertisse en avantage global.
 
-**Analyse.**
-<!-- Questions guides :
-  1. La forme de la décroissance (lin vs exp) importe-t-elle moins que le
-     moment où ε devient négligeable (fraction d'horizon commune de 0,6) ?
-  2. La couverture précoce supérieure d'UCB (si confirmée) se convertit-elle
-     en convergence plus rapide, ou l'exploration systématique des actions
-     illégales (−10) la pénalise-t-elle ?
-  3. Boltzmann évite-t-il mieux les −10 que ε-greedy (les actions à Q très
-     négatif deviennent exponentiellement rares au lieu de rester à ε/6) ? -->
+![Stratégies d'exploration](../results/figures/F7_exploration.png)
+
+*Figure F7 — Convergence des sondes greedy sous les quatre stratégies
+d'exploration ; bloc E3, n = 10 seeds, lissage 100.*
+
+**Analyse.** Le résultat ε-linéaire renverse l'intuition « seule compte la
+fraction d'horizon » : à fraction identique (ε_min atteint à 60 % du budget),
+la **forme** de la décroissance change le budget d'exploration réellement
+dépensé. La décroissance exponentielle (×0,9995 par épisode) s'effondre très
+tôt — ε passe sous 0,2 avant 20 % de l'horizon — tandis que la linéaire
+maintient une exploration soutenue en milieu d'entraînement, visible dans les
+env-steps consommés (579 k contre 334 k, +73 %). Or le seuil de convergence
+est mesuré sur des **sondes greedy** : peu importe que le comportement
+d'entraînement soit encore erratique, ce qui compte est la couverture et la
+propagation des valeurs, que l'exploration prolongée accélère. La linéaire
+paye ce choix d'un premier succès plus tardif (35,4 contre 26,4) et de plus
+de transitions dépensées — un arbitrage rentable ici sur l'axe épisodes, à
+rediscuter si l'axe de coût était l'env-step.
+
+UCB illustre l'arbitrage inverse : son bonus en √(ln t / N) force la visite
+systématique des paires (s, a) négligées, d'où le premier succès le plus
+précoce (7,9 épisodes, ×3,3 par rapport à ε-exp) et le moins d'env-steps
+consommés — mais cette systématicité inclut les Pickup/Dropoff illégaux à
+−10, qu'un ε-greedy n'échantillonne qu'à ε/6, et l'avantage initial s'érode
+(1 850 épisodes au seuil, NS). Boltzmann, enfin, évite effectivement mieux
+les −10 — les actions à Q très négatif deviennent exponentiellement rares au
+lieu de conserver la masse ε/6 — ce qui explique son premier succès précoce
+(12,1) ; mais cette même douceur ralentit l'extinction de l'exploration
+autour des Q proches, d'où une convergence globale plus lente (2 080, NS
+après Holm). L'exploration « intelligente » gagne le début de partie, la
+simple ε-greedy linéaire gagne la course.
 
 ### 5.5 Reward shaping : le théorème de Ng et al. à l'épreuve (E4 — H5)
 
@@ -638,31 +845,67 @@ mais durcit le paysage pendant l'exploration.
 Toutes les métriques ci-dessous sont **natives** (le shaping n'affecte que le
 signal d'apprentissage, jamais la mesure) :
 
-{{T_E4_SHAPING}}
+| Shaping | Reward final natif ± σ | Pas | Épisodes-au-seuil ± σ |
+|---|---|---|---|
+| Natif (contrôle) | 8,048 ± 0,006 | 12,95 | 1 710 ± 363 |
+| Potentiel (Ng et al.) | 8,050 ± 0,000 | 12,95 | 1 580 ± 169 |
+| Bonus naïf de distance | 8,050 ± 0,000 | 12,95 | 1 410 ± 202 |
+| Sur-pénalité de pas | 8,050 ± 0,000 | 12,95 | 2 000 ± 346 |
 
-- Épisodes-au-seuil : natif : {{H5_SEUIL_NATIVE}} ; potentiel :
-  {{H5_SEUIL_POTENTIEL}} ; naïf : {{H5_SEUIL_NAIF}} ; sur-pénalité :
-  {{H5_SEUIL_STEP}}
-- Reward final natif : natif : {{H5_REWARD_NATIVE}} ; potentiel :
-  {{H5_REWARD_POTENTIEL}} ; naïf : {{H5_REWARD_NAIF}}
+*Tableau — Reward shaping sur Q-Learning, métriques natives ; bloc E4,
+n = 10 seeds, 100 % de succès partout, aucune censure.*
+
+- Épisodes-au-seuil : natif : 1 710 ± 363 ; potentiel : 1 580 ± 169 (IC 95 %
+  [1 459 ; 1 701], n = 10) ; naïf : 1 410 ± 202 (IC 95 % [1 265 ; 1 555]) ;
+  sur-pénalité : 2 000 ± 346 (IC 95 % [1 752 ; 2 248]).
+- Reward final natif : natif : 8,048 ± 0,006 ; potentiel : 8,050 ± 0,000 ;
+  naïf : 8,050 ± 0,000.
 - Non-infériorité du potentiel (IC 95 % de la différence de reward final
-  vs natif) : {{H5_IC_NON_INF}}
-- Tests appariés contre le natif (famille Holm « H5 ») : {{H5_TESTS}}
+  vs natif) : +0,002, IC [−0,003 ; +0,007].
+- Tests appariés contre le natif (famille Holm « H5 ») : potentiel,
+  épisodes-au-seuil : Welch, p = 0,324, p_Holm = 1,0, g = −0,44 ; naïf :
+  Welch, p = 0,039, p_Holm = 0,232, g = −0,98, δ = −0,57 ; sur-pénalité :
+  Welch, p = 0,084, p_Holm = 0,422, g = +0,78 ; rewards finaux :
+  Mann-Whitney, p = 0,368, p_Holm = 1,0 pour les trois.
 
-Verdict H5 : {{H5_VERDICT}}
+Verdict H5 : **partiellement infirmée — et c'est le contrôle négatif qui
+infirme**. Le shaping basé potentiel accélère légèrement (1 580 contre 1 710,
+NS) sans rien dégrader, conformément au théorème d'invariance ; mais le bonus
+naïf, prédit délétère, accélère lui aussi (1 410, g = −0,98, NS après Holm)
+**sans dégrader la politique finale** (8,050, 12,95 pas). Seule la
+sur-pénalité de pas suit sa prédiction (tendance au ralentissement, 2 000,
+NS).
 
-<!-- FIGURE F8: results/figures/F8_reward_shaping.png -->
+![Reward shaping](../results/figures/F8_reward_shaping.png)
 
-**Analyse.**
-<!-- Questions guides :
-  1. Le bonus naïf dégrade-t-il la politique finale (reward natif inférieur,
-     trajectoires allongées) ou seulement la vitesse — et observe-t-on des
-     boucles de collecte de bonus dans les replays ?
-  2. Sur un MDP déterministe à horizon court où la récompense native est déjà
-     dense (−1 par pas), le potentiel a-t-il encore une marge d'accélération
-     mesurable ?
-  3. L'IC de non-infériorité permet-il d'affirmer la préservation de la
-     politique optimale, ou seulement de ne pas la rejeter ? -->
+*Figure F8 — Convergence des sondes greedy (récompense native) sous les
+quatre variantes de shaping ; bloc E4, n = 10 seeds, lissage 100.*
+
+**Analyse.** Le piège que le contrôle négatif devait tendre ne s'est pas
+refermé, et l'explication est structurelle : pour que le bonus naïf corrompe
+la politique, il faut qu'un **cycle** accumule de la récompense fictive
+(s'éloigner puis se rapprocher, indéfiniment). Or sur un MDP déterministe à
+horizon court, où chaque pas coûte −1 nativement et où le +20 terminal
+domine tout, la boucle « aller-retour à +0,5 le retour » reste largement
+perdante : +0,5 − 2 pas = −1,5 par cycle. Le bonus n'ouvre aucun puits de
+récompense rentable, il densifie seulement le gradient vers l'objectif —
+d'où son accélération. Aucune boucle de collecte n'apparaît dans les
+trajectoires greedy finales (12,95 pas exactement, comme l'optimal). Le
+danger théorique du shaping non potentiel est réel, mais il exige de la
+stochasticité, des horizons longs ou des bonus dominant la récompense
+native ; Taxi-v3 n'offre rien de tout cela.
+
+Symétriquement, la marge d'accélération du potentiel est étroite : la
+récompense native est déjà **dense** (−1 par pas structure le gradient
+temporel), et la distance de Manhattan qu'encode Φ ignore les murs — son
+information est partiellement redondante et partiellement fausse. Les 130
+épisodes gagnés en moyenne (−8 %) ne sont pas significatifs. Quant à la
+non-infériorité : l'IC [−0,003 ; +0,007] ne « prouve » pas l'équivalence —
+on ne rejette simplement pas la différence nulle — mais sa borne inférieure
+exclut toute dégradation supérieure à 0,003 point de reward, soit moins
+d'un vingtième de pas : la préservation de la politique optimale est établie
+à la résolution de l'instrument près. Conclusion honnête : sur Taxi-v3, le
+shaping — sûr ou naïf — est un raffinement marginal.
 
 ### 5.6 Tabulaire vs DQN : le coût du deep RL (E2, E5, E7 — H6)
 
@@ -676,32 +919,84 @@ douces (Polyak), perte de Huber et écrêtage de gradient.
 La comparaison principale se fait à **env-steps cumulés égaux** (axe 2 du
 protocole), les budgets en épisodes différant (15 000 vs 5 000) :
 
-{{T_H6_RESSOURCES}}
+| Axe de coût | Q-Learning | DQN | Ratio DQN/QL |
+|---|---|---|---|
+| Reward final | 8,048 ± 0,006 | 8,050 ± 0,000 | égalité (p_Holm = 0,368) |
+| Env-steps jusqu'au seuil | 143 263 ± 9 497 | **41 322 ± 9 181** | **×0,29** |
+| Env-steps totaux (budget) | 333 921 ± 2 245 | 110 786 ± 4 662 | ×0,33 |
+| Temps d'entraînement (E7) | 12,2 s (méd. 12,2) | 383,9 s (méd. 374,1) | **×31,6** |
+| Latence d'inférence | 0,25 ms | 4,77 ms | **×18,8** |
+| Mémoire | 23,4 Ko | 2 052,1 Ko | **×87,7** |
+
+*Tableau — Coûts comparés Q-Learning / DQN (MLP one-hot 500→128→128→6,
+variante Double DQN, batch 64, buffer 50 000) ; blocs E2 (n = 10 seeds) et E7
+séquentiel.*
 
 - Efficacité échantillon (env-steps pour atteindre le seuil, ratio
-  DQN/tabulaire) : {{H6_RATIO_SAMPLE}}
+  DQN/tabulaire) : **0,29× — la prédiction est inversée**, le DQN atteint le
+  seuil avec 3,5× moins de transitions (41 322 ± 9 181 contre
+  143 263 ± 9 497), et en 380 ± 132 épisodes contre 1 710 ± 363.
 - Temps d'entraînement (E7, séquentiel ; moyenne et médiane) : ratio
-  {{H6_RATIO_TEMPS}}
-- Mémoire (Q-table : 500×6 float64 = 24 ko ; DQN : paramètres + buffer) :
-  ratio {{H6_RATIO_MEMOIRE}}
-- Performance finale DQN : {{H6_DQN_REWARD}} vs R\* = 8,05 ; {{H6_TEST}}
+  ×31,6 (moyennes 383,9 s contre 12,2 s ; médianes ×30,7).
+- Mémoire (Q-table : 500×6 float64 = 24 ko ; DQN : deux réseaux + buffer) :
+  ratio ×87,7 (2 052,1 Ko contre 23,4 Ko).
+- Performance finale DQN : 8,050 ± 0,000 vs R\* = 8,05 ; contre Q-Learning :
+  Mann-Whitney, p = 0,368, p_Holm = 0,368, δ = −0,10 (le DQN atteint
+  l'optimum exact sur 10 seeds sur 10).
 
-Verdict H6 : {{H6_VERDICT}}
+Verdict H6 : **confirmée sur le temps, la mémoire et la latence — infirmée
+sur l'efficacité échantillon**. Le tabulaire domine partout où le coût se
+paye en ressources machine (×31,6 en temps, ×87,7 en mémoire, ×18,8 en
+latence), à performance finale rigoureusement égale ; mais la prédiction
+« efficacité échantillon ≥ 5× pour le tabulaire » est renversée : le replay
+buffer ré-échantillonne chaque transition dans ~64 mises à jour de mini-lot
+(train_every = 1, batch 64), là où le Q-Learning ne consomme chaque
+transition qu'une seule fois.
 
-<!-- FIGURE F9: results/figures/F9_efficacite_echantillon.png -->
+![Efficacité en échantillons](../results/figures/F9_efficacite_echantillon.png)
+
+*Figure F9 — Récompense des sondes greedy en fonction des env-steps cumulés
+(échelle log), Q-Learning vs DQN ; bloc E2, n = 10 seeds.*
 
 **Ablation CPU/GPU.** Le chronométrage E7 inclut le DQN sur cuda et sur cpu
-(3 runs chacun) : {{E7_DQN_CUDA_TEMPS}} (cuda) contre {{E7_DQN_CPU_TEMPS}}
-(cpu). {{T_E7_TEMPS}}
+(2 runs par device) : 493,0 s (cuda) contre 274,8 s
+(cpu) — le CPU est 1,8× **plus rapide** que le GPU sur ce réseau.
 
-**Analyse.**
-<!-- Questions guides :
-  1. Sur des mini-lots minuscules et un MLP étroit, le GPU est-il réellement
-     plus rapide que le CPU, ou le coût des transferts hôte-device domine-t-il ?
-  2. La sensibilité du DQN à (lr, hidden) observée en E5 confirme-t-elle que le
-     deep RL importe surtout de nouveaux hyperparamètres à régler ?
-  3. Le DQN atteint-il exactement R* ou plafonne-t-il légèrement en dessous
-     (approximation, cibles mouvantes) — et l'écart est-il significatif ? -->
+| Algorithme (E7, séquentiel) | Temps d'entraînement (s, moy./méd.) | Inférence (ms) | Mémoire (Ko) |
+|---|---|---|---|
+| Q-Learning | 12,2 / 12,2 | 0,25 | 23,4 |
+| SARSA | 14,1 / 14,1 | 0,26 | 23,4 |
+| Double Q-Learning | 14,6 / 14,6 | 0,27 | 46,9 |
+| Expected SARSA | 20,1 / 19,9 | 0,25 | 23,4 |
+| Monte Carlo | 23,7 / 23,8 | 0,62 | 46,9 |
+| BruteForce (référence) | 67,9 / 68,2 | 3,44 | 0 |
+| DQN — cpu (n = 2) | 274,8 / 274,8 | 2,12 | 2 052,1 |
+| DQN — cuda (n = 2) | 493,0 / 493,0 | 7,41 | 2 052,1 |
+
+*Tableau — Chronométrage séquentiel ; bloc E7, n = 10 seeds par algorithme
+tabulaire, n = 2 par device pour le DQN, machine au repos.*
+
+**Analyse.** L'ablation device répond sans ambiguïté à la première question :
+sur un MLP minuscule et des mini-lots de 64, le GPU n'est **pas** plus rapide
+— il est 1,8× plus lent. Chaque pas d'entraînement lance une poignée de
+kernels de quelques microsecondes de calcul utile ; la latence de lancement
+et les transferts hôte-device dominent, et l'environnement lui-même (CPU,
+~56 000 steps/s) impose des allers-retours permanents. Le GPU n'amortit son
+coût fixe qu'à partir de réseaux et de lots que ce problème ne justifie pas.
+
+L'annexe E5 (3 lr × 2 tailles cachées, 3 seeds) nuance la question des
+hyperparamètres : sur cette plage pré-dégrossie, la performance finale est
+plate (8,04 à 8,05 partout, aucune censure), mais la cinétique varie d'un
+facteur 6 (433 épisodes au seuil à lr = 10⁻³ contre 2 567 à lr = 10⁻⁴,
+h = 64) — le deep RL importe bien de nouveaux hyperparamètres, dont le coût
+se paye ici en vitesse plutôt qu'en qualité, à l'image de la grille tabulaire
+E1a. Enfin, le DQN ne plafonne pas sous R\* : il atteint exactement 8,05 sur
+les 10 seeds (l'approximation et les cibles mouvantes n'empêchent pas, sur
+500 états one-hot, de représenter la politique optimale exactement). La
+leçon de H6 tient en une phrase : à épisodes comptés le DQN est même
+l'algorithme le plus « frugal » en interactions — mais chaque interaction
+lui coûte deux ordres de grandeur plus cher en temps machine, pour une
+politique que la table obtient exactement au même niveau.
 
 ### 5.7 Multi-passagers : passage à l'échelle tabulaire (E6 — H9)
 
@@ -714,29 +1009,66 @@ QL > SARSA en vitesse observé en E2 persiste.
 Q-Learning et SARSA sont entraînés 150 000 épisodes (10 seeds chacun) sur
 l'environnement de la section 3.2 :
 
-{{T_E6_MULTI}}
+| Algorithme | Reward final ± σ | Pas (2 courses) | Succès | Épisodes-au-seuil ± σ (censures) |
+|---|---|---|---|---|
+| Q-Learning | 17,71 ± 0,20 | 24,3 | 100 % | 18 600 ± 2 591 (0) |
+| SARSA | 18,03 ± 0,20 | 24,0 | 100 % | 51 700 ± 3 592 (0) |
 
-- Épisodes-au-seuil (seuil recalculé sur l'environnement multi) :
-  QL : {{H9_SEUIL_QL_MULTI}} ; SARSA : {{H9_SEUIL_SARSA_MULTI}}
+*Tableau — Multi-passagers (14 400 états) ; bloc E6, n = 10 seeds, budget
+150 000 épisodes, troncature 500 pas.*
+
+- Épisodes-au-seuil : QL : 18 600 ± 2 591 ; SARSA : 51 700 ± 3 592 —
+  10 runs sur 10 convergés pour chacun. Faute d'étalon par value iteration
+  sur l'environnement multi (son modèle P n'a pas été extrait), le seuil
+  absolu de 6,99 du protocole a été conservé tel quel ; il correspond à
+  ~39 % du plateau observé (~18) au lieu de 90 %, et se lit donc comme un
+  seuil de « politique déjà fonctionnelle » plutôt que quasi optimale —
+  identique pour les deux algorithmes, la comparaison reste équitable.
 - Coût relatif de convergence (multi / simple, à algorithme égal) :
-  {{H9_RATIO_COUT}} — à comparer au facteur ×28,8 de l'espace d'états
-- Performance finale : QL : {{E6_QL_REWARD}} ; longueur des tournées greedy :
-  {{E6_STEPS_GREEDY}}
+  QL : 18 600 / 1 710 = **×10,9** ; SARSA : 51 700 / 3 910 = **×13,2** — à
+  comparer au facteur ×28,8 de l'espace d'états.
+- Performance finale : QL : 17,71 ± 0,20 (SARSA : 18,03 ± 0,20) ; longueur
+  des tournées greedy : 24,3 pas (QL) et 24,0 pas (SARSA) pour deux
+  livraisons, 100 % de succès.
 
-Verdict H9 : {{H9_VERDICT}}
+Verdict H9 (exploratoire) : **passage à l'échelle réussi, prédiction de
+sur-linéarité non retrouvée**. Les deux algorithmes apprennent une politique
+de tournée complète (100 % de succès sur les 10 seeds) ; le coût de
+convergence croît nettement (×10,9 à ×13,2) mais reste **sous** le facteur
+×28,8 de l'espace d'états, au seuil — plus indulgent — retenu. Le classement
+de **vitesse** QL > SARSA persiste avec un écart relatif comparable à E2
+(×2,8 contre ×2,3) ; en revanche, le classement de **qualité finale**
+s'inverse légèrement (SARSA 18,03 contre QL 17,71, descriptif).
 
-<!-- FIGURE F12: results/figures/F12_multi_passagers.png -->
+![Multi-passagers : convergence](../results/figures/F12_multi_passagers.png)
 
-**Analyse.**
-<!-- Questions guides :
-  1. La croissance sur-linéaire (si observée) s'explique-t-elle par la
-     couverture (chaque état est visité ~29× moins souvent à budget égal) ou
-     par l'allongement de la chaîne de crédit (deux +20 à propager) ?
-  2. Les tournées greedy apprises embarquent-elles réellement les deux
-     passagers simultanément quand c'est optimal (preuve d'optimisation de
-     tournée, pas de simple enchaînement de courses) ?
-  3. Le classement QL > SARSA persiste-t-il avec le même ordre de grandeur
-     d'écart relatif qu'en E2 ? -->
+*Figure F12 — Convergence des sondes greedy sur l'environnement
+multi-passagers à 14 400 états ; bloc E6, n = 10 seeds, lissage 100.*
+
+**Analyse.** La croissance sous-linéaire du coût s'explique d'abord par la
+couverture : chaque épisode multi visite environ deux fois plus d'états
+qu'un épisode simple (24 pas contre 13 en régime optimal, bien davantage en
+début d'entraînement avec une troncature à 500), si bien qu'à budget
+d'épisodes égal, le déficit de visites par état est nettement moindre que le
+facteur ×28,8 ne le suggère ; la chaîne de crédit, elle, ne s'allonge que
+modérément (deux +20 séparés d'une douzaine de pas, que le bootstrapping TD
+propage incrémentalement). Les tournées apprises attestent une véritable
+optimisation : 24 pas pour deux livraisons, soit moins que deux courses
+simples enchaînées (2 × 12,95 ≈ 26), ce qui n'est possible qu'en mutualisant
+les trajets — embarquer le second passager en route quand la géométrie s'y
+prête, la capacité 2 de l'environnement étant précisément conçue pour le
+permettre.
+
+L'inversion de qualité en faveur de SARSA (18,03 contre 17,71, soit ~0,3 pas
+par tournée) doit être lue avec prudence — famille exploratoire sans test
+confirmatoire, n = 10, écart faible — mais elle est cohérente avec le coût
+accru de l'erreur sur les longues tournées : l'ε résiduel qui coûtait son
+optimum exact à SARSA sur Taxi-v3 pénalise ici davantage le Q-Learning, dont
+la politique greedy fige plus tôt des trajectoires apprises sur une
+couverture encore incomplète, quand la prudence on-policy de SARSA continue
+de lisser les valeurs le long des chemins réellement suivis. Trancher
+demanderait de rejouer E6 en famille confirmatoire — c'est exactement le
+type d'hypothèse que cette campagne exploratoire sert à formuler.
 
 ### 5.8 Mode time-limited
 
@@ -746,25 +1078,43 @@ d'acceptation, une convergence en moins de 5 000 épisodes et un reward moyen
 supérieur à 7,0 sur 100 épisodes de test. C'est le seul contexte où l'early
 stopping est autorisé — il s'agit d'un mode produit, pas d'une expérience.
 
-{{T_TIME_LIMITED}}
+| Sortie exigée par le sujet | Valeur mesurée |
+|---|---|
+| Budget de temps demandé | 30 s |
+| Temps d'entraînement effectif | 14,2 s (arrêt anticipé) |
+| Épisodes d'entraînement effectifs | 8 957 |
+| Reward moyen (100 épisodes de test) | 8,05 (= R\*) |
+| Pas moyens par partie | 12,95 |
+| Taux de succès | 100 % |
+| Temps moyen par partie de test | 0,58 ms |
 
-- Épisodes effectifs avant arrêt : {{TL_EPISODES}}
-- Reward moyen sur 100 épisodes de test : {{TL_REWARD}}
-- Temps total (entraînement + évaluation) : {{TL_TEMPS}}
+*Tableau — Mode time-limited du CLI, configuration `optimized.yaml`
+(Q-Learning, α = 0,30, γ = 0,95).*
 
-**Analyse.**
-<!-- Questions guides :
-  1. Les critères d'acceptation (< 5000 épisodes, reward > 7,0) sont-ils tenus
-     avec marge, et sur toutes les seeds essayées ?
-  2. Quel est le compromis exact entre l'arrêt anticipé et la qualité finale
-     par rapport au budget complet de 15 000 épisodes ? -->
+- Épisodes effectifs avant arrêt : 8 957 (early stopping sur le
+  target_reward de 8,0 avec patience de 500 checkpoints, déclenché bien
+  avant l'épuisement du budget).
+- Reward moyen sur 100 épisodes de test : 8,05, soit exactement R\*.
+- Temps total (entraînement + évaluation) : 14,2 s d'entraînement sur les
+  30 s de budget, plus ~0,06 s pour les 100 parties de test (0,58 ms
+  chacune).
+
+**Analyse.** Les critères d'acceptation sont tenus avec une marge
+confortable : la convergence au seuil intervient vers 980 épisodes avec
+cette configuration (section 5.2), très en deçà des 5 000 exigés, et le
+reward de test de 8,05 dépasse largement le plancher de 7,0 — il *est* la
+politique optimale. Le compromis de l'arrêt anticipé est nul en qualité :
+mêmes 8,05 de reward, mêmes 12,95 pas et mêmes 100 % de succès que le budget
+complet de 15 000 épisodes, pour moitié moins de temps que le budget alloué.
+Sur un problème dont l'optimum est atteint en ~1 000 épisodes, le mode
+time-limited ne « sacrifie » rien : il cesse simplement de payer pour un
+apprentissage déjà terminé — c'est précisément le cas d'usage produit qui
+justifie d'y autoriser l'early stopping que le protocole interdit partout
+ailleurs.
 
 ---
 
 ## 6. Discussion
-
-<!-- Trame rédactionnelle : chaque thème sera étayé par les valeurs de la
-     section 5 une fois insérées. -->
 
 ### 6.1 Des différences cinétiques, rarement asymptotiques
 
@@ -776,7 +1126,22 @@ d'entraînement relèvent de l'échantillonnage, pas de l'algorithme. H2, H7 et
 H8 sont donc des hypothèses sur des **trajectoires d'apprentissage** — qui
 atteint le seuil le premier, avec quelle variance, au prix de quel biais
 transitoire — et non sur des plafonds de performance.
-{{DISC_CINETIQUE_SYNTHESE}}
+
+La campagne l'a vérifié avec une netteté inattendue : 15 des 20
+configurations de la grille E1a terminent **exactement** sur la politique
+optimale (8,05 de reward de test, 12,95 pas, 100 % de succès), et 5 des 6
+algorithmes du face-à-face — tous sauf Monte Carlo — la rejoignent ou s'en
+approchent à moins de 0,08 point ; toute la hiérarchie se
+joue sur la vitesse : de 890 à 5 470 épisodes selon (α, γ), de 1 710 (QL) à
+3 930 (Expected SARSA) selon l'algorithme, 380 pour le DQN. Les deux seules
+différences authentiquement asymptotiques sont elles-mêmes éclairantes : le
+plafond de SARSA (7,974, p_Holm = 2×10⁻⁴) n'est pas un défaut d'apprentissage
+mais la définition même de l'on-policy — il apprend la valeur de la politique
+qu'il suit, ε résiduel compris — et l'échec de Monte Carlo (10/10 censurés)
+tient à la variance de ses retours complets sous troncature, pas à sa cible.
+Corollaire méthodologique : comparer des « performances finales » sur Taxi-v3
+sans regarder les trajectoires de convergence reviendrait à conclure que tous
+les algorithmes se valent.
 
 ### 6.2 Hyperparamètres contre algorithmes
 
@@ -787,7 +1152,20 @@ l'étendue inter-algorithmes à configuration fixée, alors comparer des
 algorithmes sans contrôler leurs hyperparamètres — pratique répandue — revient
 à mesurer du bruit de tuning. C'est aussi un argument méthodologique en faveur
 des grilles complètes (E1) préalables à tout face-à-face (E2).
-{{DISC_H3_SYNTHESE}}
+
+Le verdict mesuré est plus nuancé que l'hypothèse : **cela dépend de l'axe**.
+Sur la vitesse de convergence, H3 est confirmée — 56 % de la variance des
+épisodes-au-seuil revient aux hyperparamètres contre 18 % à l'algorithme
+(méthodes TD), et le seul choix de α déplace le Q-Learning de 5 470 à 890
+épisodes, bien plus que n'importe quel changement d'étiquette TD. Sur la
+qualité finale, c'est l'inverse dès que la famille change réellement de
+propriétés : Monte Carlo à lui seul porte l'étendue inter-algorithmes à 26,7
+points de reward et 53 % de la variance. La leçon pratique se formule ainsi :
+entre méthodes TD saines, le tuning importe plus que l'algorithme ; mais
+aucun tuning ne sauve un algorithme structurellement inadapté à
+l'environnement — MC est insensible à α (qui ne paramètre aucune de ses mises
+à jour) et son étendue de 105 points sur la grille ne reflète que γ. Le
+face-à-face E2 n'a de sens qu'adossé à la grille E1 qui l'a précédé.
 
 ### 6.3 Le prix du deep RL sur un problème tabulaire
 
@@ -800,7 +1178,21 @@ latence — chiffrent ce que coûte l'approximation neuronale quand elle ne sert
 mécaniquement de petits réseaux à petits lots. La valeur du deep RL est
 ailleurs : elle commence là où la table s'arrête, ce que l'extension
 TrackMania (section 7) matérialise sans avoir pu être exécutée.
-{{DISC_H6_SYNTHESE}}
+
+Les chiffres donnent à cette expérience de coût un relief inattendu : le DQN
+paye ×31,6 en temps d'entraînement, ×87,7 en mémoire et ×18,8 en latence de
+décision — mais il est le plus **économe en interactions** de toute la
+campagne (41 322 env-steps au seuil contre 143 263 pour le Q-Learning, 380
+épisodes contre 1 710), parce que son replay buffer ré-exploite chaque
+transition dans des dizaines de mises à jour. La frontière entre tabulaire et
+profond n'est donc pas « échantillons contre calcul » en général, mais bien :
+*où le coût est-il payé ?* Sur Taxi-v3, l'interaction est quasi gratuite
+(~56 000 steps/s) et le calcul domine — la table gagne. Sur un simulateur
+lourd ou un système réel, où chaque transition coûte du temps d'horloge,
+l'arbitrage s'inverserait exactement dans le sens que le replay du DQN
+préfigure. L'ablation CPU/GPU (274,8 s contre 493,0 s) ajoute la touche
+finale : même au sein du deep RL, l'outillage standard (GPU) n'est pas un
+accélérateur universel — à petit réseau et petits lots, il est un frein.
 
 ### 6.4 Ce que « à épisodes égaux » ne dit pas
 
@@ -813,7 +1205,18 @@ wall-clock) et fait des env-steps l'axe principal de H6. De même, la
 troncature à 200 pas fabrique un plancher de reward qui rend la moyenne du
 brute force ininterprétable (section 5.1) : deux artefacts de mesure distincts
 qui plaident pour une lecture toujours *instrumentée* des métriques RL.
-{{DISC_EQUITE_SYNTHESE}}
+
+La campagne fournit les ordres de grandeur concrets de ce biais : à 15 000
+épisodes identiques, Monte Carlo a consommé 679 213 env-steps là où le
+Q-Learning n'en dépensait que 333 921 — l'algorithme le plus mauvais a eu
+droit à deux fois plus d'interactions, et échoue quand même ; à l'inverse,
+la décroissance ε-linéaire doit une partie de son avantage en épisodes à un
+surcroît de 73 % d'env-steps d'exploration. Aucun classement de cette étude
+ne s'inverse d'un axe à l'autre, mais les écarts changent d'amplitude — et
+sur la comparaison tabulaire/DQN, c'est bien le choix de l'axe qui décide du
+vainqueur en « efficacité » (épisodes et env-steps pour le DQN, wall-clock
+pour la table). Un protocole qui n'expliciterait pas son axe de coût
+choisirait son gagnant sans le dire.
 
 ### 6.5 Le reward shaping, boussole ou béquille ?
 
@@ -826,7 +1229,21 @@ shaping sûr existe et se code en cinq lignes dès qu'on dispose d'un potentiel
 raisonnable ; (2) le shaping intuitif mais non potentiel est un piège
 silencieux, indétectable si l'on ne rapporte que la récompense façonnée —
 d'où la convention stricte de ce protocole de ne jamais rapporter autre chose
-que la récompense native. {{DISC_H5_SYNTHESE}}
+que la récompense native.
+
+Le verdict expérimental impose toutefois d'inverser la morale attendue : le
+théorème d'invariance est vérifié (potentiel : 8,05 partout, IC de
+non-infériorité [−0,003 ; +0,007]), mais le falsificateur n'a pas falsifié —
+le bonus naïf accélère autant sinon plus (1 410 contre 1 580 épisodes, tous
+deux NS après Holm) et ne dégrade rien, faute de cycle rentable sur un MDP
+déterministe à horizon court où le −1 natif domine le bonus. La leçon
+honnête n'est donc pas « le shaping non potentiel est puni » mais « Taxi-v3
+est trop bien conditionné pour punir » : la boussole et la béquille y sont
+indiscernables, à effets marginaux. C'est un résultat négatif utile — il
+délimite le domaine où la précaution de Ng et al. devient réellement
+opérante (stochasticité, horizons longs, bonus dominants), et il rappelle
+qu'une vérification expérimentale d'un théorème doit choisir un
+environnement capable de le mettre en défaut.
 
 ---
 
@@ -898,27 +1315,48 @@ défavorable, mériteraient d'y être rejouées à protocole constant.
 
 Ce projet a traité Taxi-v3 non comme un exercice de performance mais comme un
 banc d'essai contrôlé : un étalon optimal calculé par value iteration
-(R\* = 8,05), neuf hypothèses formulées a priori, environ 840 runs sous
+(R\* = 8,05), neuf hypothèses formulées a priori, 822 runs exécutés sous
 protocole figé, et des conclusions systématiquement adossées à des tests
 statistiques corrigés et à des tailles d'effet.
 
 Du côté des résultats : la base aléatoire, une fois débarrassée de l'artefact
-de troncature, établit le point de départ ({{E0_BF2000_STEPS}} pas par épisode) ;
-{{CONCLUSION_MEILLEUR_ALGO}} fournit la meilleure trajectoire de convergence
-vers la politique optimale, atteinte à {{CONCLUSION_REWARD_FINAL}} de reward
-moyen en évaluation pour {{CONCLUSION_STEPS_FINAL}} pas par épisode ; les
-hypothèses H1 à H8 sont tranchées comme suit : {{CONCLUSION_VERDICTS}}.
+de troncature, établit le point de départ (1 389,6 pas par épisode, encore
+sous-estimés par la troncature à 2 000) ;
+le Q-Learning à la configuration α = 0,30 / γ = 0,95 issue de la grille E1a
+(promue dans `configs/optimized.yaml`, seuil de convergence en 980 épisodes)
+fournit la meilleure trajectoire de convergence
+vers la politique optimale, atteinte à 8,05 de reward
+moyen en évaluation pour 12,95 pas par épisode ; les
+hypothèses H1 à H8 sont tranchées comme suit : **H1 infirmée** dans ses deux
+volets (γ = 0,99 ne converge pas plus lentement que γ = 0,9 et ne donne pas
+de meilleure politique) ; **H2 confirmée pour la vitesse** (QL 2,3× plus
+rapide, p_Holm < 10⁻⁷) mais infirmée pour la stabilité de SARSA, qui
+plafonne de surcroît sous l'optimum (7,974, p_Holm = 2×10⁻⁴) ; **H3
+confirmée sur l'axe cinétique** (56 % de variance aux hyperparamètres) et
+infirmée sur la qualité finale (Monte Carlo domine la variance) ; **H4
+partiellement confirmée**, avec la décroissance ε-linéaire significativement
+plus rapide que l'exponentielle (p_Holm = 0,027) ; **H5 partiellement
+infirmée**, le contrôle négatif naïf n'ayant rien dégradé ; **H6 confirmée
+sur les coûts machine** (×31,6 temps, ×87,7 mémoire, ×18,8 latence) et
+inversée sur l'efficacité échantillon ; **H7 demi-confirmée** (Double QL
+1,85× plus lent, stabilité non améliorée, surestimation de QL transitoire) ;
+**H8 confirmée au maximum** (Monte Carlo censuré 10/10, δ = 1,00).
 
 Sur les extensions : le DQN confirme que le deep RL est un instrument de
 généralisation, pas d'accélération — son coût sur un problème tabulaire est
-chiffré par H6 ({{H6_RATIO_TEMPS}} en temps) ; l'environnement multi-passagers
+chiffré par H6 (×31,6 en temps) ; l'environnement multi-passagers
 à 14 400 états montre que la tabulation encaisse un facteur ×28,8 d'états au
-prix d'un coût de convergence {{H9_RATIO_COUT}} ; et le pipeline TrackMania,
+prix d'un coût de convergence ×10,9 à ×13,2 au seuil retenu, avec 100 % de
+succès et de véritables tournées mutualisées ; et le pipeline TrackMania,
 livré et testé hors jeu, trace la frontière au-delà de laquelle la Q-table
 cède la place au réseau.
 
 La conclusion méthodologique est peut-être la plus durable : sur ce problème,
-{{CONCLUSION_H3_PHRASE}} — et la moitié des « résultats » qu'un protocole
+le réglage des hyperparamètres a pesé davantage sur la vitesse de convergence
+que le choix de l'algorithme (56 % contre 18 % de la variance des
+épisodes-au-seuil entre méthodes TD), la qualité finale ne distinguant que
+les familles structurellement inadaptées — et la moitié des « résultats »
+qu'un protocole
 naïf aurait rapportés (moyenne du brute force, reward d'entraînement, meilleur
 checkpoint) étaient des artefacts de mesure que le protocole a dû neutraliser
 un à un.
