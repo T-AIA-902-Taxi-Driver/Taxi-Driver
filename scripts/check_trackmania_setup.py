@@ -4,9 +4,9 @@ Runs a random policy against the real tmrl environment (game machine only) and
 reports everything needed to declare the setup training-ready:
 
 - observation/action space validation (exact TM20LIDAR layout),
-- per-step wall-clock timing against the 20 Hz real-time budget (a step
-  slower than ~55 ms means rtgym missed its deadline and the collected
-  data silently degrades),
+- real-time health against the 20 Hz budget: rtgym's own timing-violation
+  warnings are counted (the authoritative signal — rtgym self-corrects small
+  caller-side overruns), with per-step wall-time stats reported as context,
 - reward statistics (the random-policy baseline that training must beat),
 - episode statistics and NaN/range checks on observations,
 - the last ``info`` dict verbatim (to discover what tmrl exposes there).
@@ -31,6 +31,7 @@ import json
 import statistics
 import sys
 import time
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -42,8 +43,7 @@ TEMPLATE_PATH = REPO_ROOT / "configs" / "tmrl_config.json"
 REDACTED_KEYS = {"PASSWORD", "WANDB_KEY", "WANDB_ENTITY", "WANDB_PROJECT", "PUBLIC_IP_SERVER"}
 REDACTION_PLACEHOLDER = "<machine-specific>"
 
-DEADLINE_S = 0.055  # 50 ms rtgym budget + 10% tolerance
-MISS_RATE_LIMIT = 0.10
+MISS_RATE_LIMIT = 0.10  # tolerated rate of rtgym timing violations
 
 
 def _live_config_path() -> Path:
@@ -184,41 +184,52 @@ def run_check(steps: int, json_out: Path | None) -> int:
     last_info: dict[str, Any] = {}
 
     print(f"Running {steps} random steps (game window must be visible and focused)...")
+    rtgym_timeouts = 0
     obs, _ = env.reset()
     current_len = 0
     current_reward = 0.0
     try:
-        for _ in range(steps):
-            action = rng.uniform(-1.0, 1.0, size=3).astype(np.float32)
-            start = time.perf_counter()
-            obs, reward, terminated, truncated, info = env.step(action)
-            step_times.append(time.perf_counter() - start)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            for _ in range(steps):
+                action = rng.uniform(-1.0, 1.0, size=3).astype(np.float32)
+                start = time.perf_counter()
+                obs, reward, terminated, truncated, info = env.step(action)
+                elapsed = time.perf_counter() - start
+                # The terminal step legitimately includes respawn work; its
+                # wall time says nothing about the steady-state 20 Hz budget.
+                if not (terminated or truncated):
+                    step_times.append(elapsed)
 
-            rewards.append(float(reward))
-            current_len += 1
-            current_reward += float(reward)
-            last_info = dict(info)
-            if np.isnan(obs).any():
-                nan_seen = True
-            if not env.observation_space.contains(obs):
-                out_of_range = True
-            if terminated or truncated:
-                terminated_count += int(terminated)
-                truncated_count += int(truncated)
-                episode_lengths.append(current_len)
-                episode_rewards.append(current_reward)
-                current_len, current_reward = 0, 0.0
-                obs, _ = env.reset()
+                rewards.append(float(reward))
+                current_len += 1
+                current_reward += float(reward)
+                last_info = dict(info)
+                if np.isnan(obs).any():
+                    nan_seen = True
+                if not env.observation_space.contains(obs):
+                    out_of_range = True
+                if terminated or truncated:
+                    terminated_count += int(terminated)
+                    truncated_count += int(truncated)
+                    episode_lengths.append(current_len)
+                    episode_rewards.append(current_reward)
+                    current_len, current_reward = 0, 0.0
+                    obs, _ = env.reset()
+        # rtgym warns once per real timing violation of its internal clock —
+        # the authoritative signal, unlike raw caller-side wall time, which
+        # rtgym self-corrects against on the next step.
+        rtgym_timeouts = sum(1 for w in caught if "timed out" in str(w.message).lower())
     finally:
         env.wait()
         env.close()
 
     times_ms = [t * 1000.0 for t in step_times]
     times_sorted = sorted(times_ms)
-    misses = sum(1 for t in step_times if t > DEADLINE_S)
-    miss_rate = misses / len(step_times) if step_times else 1.0
+    misses = rtgym_timeouts
+    miss_rate = misses / steps if steps else 1.0
     report = {
-        "steps": len(step_times),
+        "steps": steps,
         "step_time_ms": {
             "mean": statistics.mean(times_ms),
             "std": statistics.pstdev(times_ms),
@@ -226,7 +237,7 @@ def run_check(steps: int, json_out: Path | None) -> int:
             "p95": times_sorted[int(len(times_sorted) * 0.95)],
             "max": max(times_ms),
         },
-        "deadline_misses": {"count": misses, "rate": miss_rate, "budget_ms": DEADLINE_S * 1000},
+        "rtgym_timeouts": {"count": misses, "rate": miss_rate},
         "reward": {
             "sum": sum(rewards),
             "mean_per_step": statistics.mean(rewards) if rewards else 0.0,
@@ -258,7 +269,7 @@ def run_check(steps: int, json_out: Path | None) -> int:
         failures.append("observations outside the declared Box(-1, 1)")
     if miss_rate > MISS_RATE_LIMIT:
         failures.append(
-            f"deadline miss rate {miss_rate:.1%} > {MISS_RATE_LIMIT:.0%} "
+            f"rtgym timing-violation rate {miss_rate:.1%} > {MISS_RATE_LIMIT:.0%} "
             "(rtgym cannot hold 20 Hz on this machine/settings)"
         )
     if failures:
