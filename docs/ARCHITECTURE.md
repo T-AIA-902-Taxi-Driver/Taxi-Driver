@@ -735,7 +735,7 @@ Valeurs par defaut (dans Config) < Fichier YAML < Arguments CLI
 | `model_path`            | `str`   | `"models/"`   | Repertoire de sauvegarde des modeles               |
 | `results_dir`           | `str`   | `"results/"`  | Repertoire de sauvegarde des resultats             |
 | `reward_shaping`        | `bool`  | `False`       | Activer le reward shaping                          |
-| `early_stopping`        | `bool`  | `True`        | Activer l'arret anticipe                           |
+| `early_stopping`        | `bool`  | `False`       | Arret anticipe (opt-in : doit rester desactive pendant les benchmarks — arreter certains algorithmes plus tot que d'autres biaise les metriques de convergence ; le mode time-limited l'active explicitement) |
 | `patience`              | `int`   | `500`         | Nombre d'episodes sans amelioration avant arret    |
 
 ### Description des fichiers YAML
@@ -770,7 +770,7 @@ n_train_episodes: 50000
 n_test_episodes: 100
 mode: time_limited
 seed: 42
-early_stopping: true
+early_stopping: true   # opt-in : uniquement pour le mode time-limited
 patience: 1000
 ```
 
@@ -788,7 +788,7 @@ sweep:
   epsilon_decay: [0.999, 0.9995, 0.9999]
 n_train_episodes: 20000
 n_test_episodes: 100
-n_seeds: 3
+n_seeds: 10   # protocole §6.5 du cadrage : 10 seeds par configuration
 ```
 
 ---

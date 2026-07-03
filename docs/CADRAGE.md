@@ -848,7 +848,7 @@ Ces indicateurs caractérisent la vitesse et la stabilité de l'apprentissage :
 
 | KPI                            | Description                                              | Cible                    |
 |--------------------------------|----------------------------------------------------------|--------------------------|
-| Épisodes pour convergence      | Nombre d'épisodes nécessaires pour atteindre 95% du reward optimal | **< 5000** (Q-Learning)  |
+| Épisodes pour convergence      | Nombre d'épisodes nécessaires pour atteindre 90% du reward optimal (seuil principal du protocole ; le seuil 95 % est rapporté en annexe) | **< 5000** (Q-Learning)  |
 | Stabilité (écart-type rewards) | Écart-type des rewards sur les 100 derniers épisodes     | **< 2.0** après convergence |
 | First success episode          | Numéro du premier épisode résolu avec succès             | **< 500**                |
 
@@ -902,7 +902,7 @@ Pour garantir la reproductibilité et la fiabilité des résultats, le protocole
 
 ### 7.1 Extension Multi-Passagers
 
-L'extension multi-passagers augmente la complexité du problème en introduisant **2 passagers** à transporter simultanément. Chaque passager possède un lieu de départ et une destination parmi les 4 emplacements (R, G, Y, B). L'espace d'états est considérablement étendu : au lieu de 500 états, on passe à 25 (positions taxi) × 5^2 (états de 2 passagers) × 4^2 (2 destinations) = **10 000 états**.
+L'extension multi-passagers augmente la complexité du problème en introduisant **2 passagers** à transporter simultanément. Chaque passager possède un lieu de départ et une destination parmi les 4 emplacements (R, G, Y, B). L'espace d'états est considérablement étendu : au lieu de 500 états, on passe à 25 (positions taxi) × 6² (états de 2 passagers : R, G, Y, B, à bord, **livré**) × 4² (2 destinations) = **14 400 états**. Le statut « livré » est indispensable : contrairement à Taxi-v3 où la dépose termine l'épisode, la livraison du premier passager doit rester représentable pendant que le second est encore en course (le décompte initial de 10 000 états, fondé sur 5 statuts, omettait ce cas).
 
 L'implémentation repose sur un **wrapper custom Gymnasium** (`MultiPassengerEnv`) qui étend l'environnement Taxi-v3 standard. Le système de récompenses est adapté : +20 pour chaque passager déposé à destination, -1 par step, -10 pour les actions illégales. L'épisode se termine quand les deux passagers sont déposés correctement.
 
