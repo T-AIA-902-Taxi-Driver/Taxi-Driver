@@ -20,6 +20,7 @@ from src.environments.trackmania_wrapper import (
     OBS_DIM,
     TrackManiaEnvWrapper,
     make_trackmania_env,
+    validate_tmrl_spaces,
 )
 
 TupleObs = tuple[NDArray[np.float32], NDArray[np.float32], NDArray[np.float32], NDArray[np.float32]]
@@ -181,6 +182,102 @@ class TestReset:
         assert fake.last_seed is None
         assert obs.shape == (83,)
         assert info == {}
+
+
+class TestSpaceValidation:
+    def _lidar_spaces(self) -> tuple[spaces.Tuple, spaces.Box]:
+        fake = FakeTMEnv()
+        return fake.observation_space, fake.action_space
+
+    def test_valid_lidar_spaces_pass(self) -> None:
+        obs_space, action_space = self._lidar_spaces()
+        validate_tmrl_spaces(obs_space, action_space)  # must not raise
+
+    def test_non_tuple_observation_space_raises(self) -> None:
+        _, action_space = self._lidar_spaces()
+        box = spaces.Box(0.0, 255.0, shape=(4, 64, 64), dtype=np.float32)
+        with pytest.raises(ValueError, match="RTGYM_INTERFACE"):
+            validate_tmrl_spaces(box, action_space)
+
+    def test_wrong_tuple_arity_raises(self) -> None:
+        obs_space, action_space = self._lidar_spaces()
+        five = spaces.Tuple((*obs_space.spaces, spaces.Box(0.0, 1.0, (1,), dtype=np.float32)))
+        with pytest.raises(ValueError, match="RTGYM_INTERFACE"):
+            validate_tmrl_spaces(five, action_space)
+
+    def test_wrong_lidar_shape_raises(self) -> None:
+        obs_space, action_space = self._lidar_spaces()
+        bad = spaces.Tuple(
+            (
+                obs_space.spaces[0],
+                spaces.Box(0.0, np.inf, shape=(4, 20), dtype=np.float32),
+                obs_space.spaces[2],
+                obs_space.spaces[3],
+            )
+        )
+        with pytest.raises(ValueError, match=r"\(4, 20\)"):
+            validate_tmrl_spaces(bad, action_space)
+
+    def test_wrong_action_shape_raises(self) -> None:
+        obs_space, _ = self._lidar_spaces()
+        with pytest.raises(ValueError, match="action space"):
+            validate_tmrl_spaces(obs_space, spaces.Box(-1.0, 1.0, shape=(2,), dtype=np.float32))
+
+    def test_wrapper_construction_validates_spaces(self) -> None:
+        fake = FakeTMEnv()
+        fake.observation_space = spaces.Box(0.0, 255.0, shape=(4, 64, 64), dtype=np.float32)
+        with pytest.raises(ValueError, match="RTGYM_INTERFACE"):
+            TrackManiaEnvWrapper(fake)
+
+
+class TestFlattenErrors:
+    def test_wrong_component_count_at_reset_raises(self) -> None:
+        speed, lidar, prev, _ = make_obs()
+        fake = FakeTMEnv(obs=(speed, lidar, prev))  # type: ignore[arg-type]
+        wrapper = TrackManiaEnvWrapper(fake)
+        with pytest.raises(ValueError, match="4-component"):
+            wrapper.reset()
+
+    def test_wrong_lidar_payload_shape_raises(self) -> None:
+        lidar = np.full((3, 19), 100.0, dtype=np.float32)  # 3 scans instead of 4
+        fake = FakeTMEnv(obs=make_obs(lidar=lidar))
+        wrapper = TrackManiaEnvWrapper(fake)
+        with pytest.raises(ValueError, match="shape"):
+            wrapper.reset()
+
+
+class TestWaitAndClose:
+    class _WaitableFake(FakeTMEnv):
+        def __init__(self) -> None:
+            super().__init__()
+            self.wait_calls = 0
+            self.close_calls = 0
+
+        def wait(self) -> None:
+            self.wait_calls += 1
+
+        def close(self) -> None:
+            self.close_calls += 1
+
+    def test_wait_is_forwarded(self) -> None:
+        fake = self._WaitableFake()
+        wrapper = TrackManiaEnvWrapper(fake)
+        wrapper.wait()
+        assert fake.wait_calls == 1
+
+    def test_close_is_forwarded(self) -> None:
+        fake = self._WaitableFake()
+        wrapper = TrackManiaEnvWrapper(fake)
+        wrapper.close()
+        assert fake.close_calls == 1
+
+    def test_wait_without_support_is_a_noop(self) -> None:
+        wrapper = TrackManiaEnvWrapper(FakeTMEnv())
+        wrapper.wait()  # must not raise
+
+    def test_close_without_support_is_a_noop(self) -> None:
+        wrapper = TrackManiaEnvWrapper(FakeTMEnv())
+        wrapper.close()  # must not raise
 
 
 class TestMakeTrackmaniaEnv:

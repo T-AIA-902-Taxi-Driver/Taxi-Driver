@@ -51,6 +51,43 @@ class TMEnvProtocol(Protocol):
         ...
 
 
+def validate_tmrl_spaces(observation_space: Any, action_space: Any) -> None:
+    """Fail fast when the underlying environment is not on the LIDAR preset.
+
+    The wrapper hard-assumes tmrl's ``TM20LIDAR`` interface. If the machine's
+    tmrl configuration selects another preset (``TM20IMAGES`` camera images,
+    ``TM20LIDARPROGRESS`` 5-component tuple, ...), every downstream shape
+    breaks; validating the declared spaces at construction time surfaces the
+    misconfiguration immediately with the exact fix, instead of failing on the
+    first observation.
+
+    Args:
+        observation_space: Declared observation space of the underlying env.
+        action_space: Declared action space of the underlying env.
+
+    Raises:
+        ValueError: If the spaces do not match the ``TM20LIDAR`` layout, with
+            the config change to apply.
+    """
+    expected_shapes = ((SPEED_DIM,), LIDAR_SHAPE, (ACTION_DIM,), (ACTION_DIM,))
+    hint = (
+        'Set "RTGYM_INTERFACE": "TM20LIDAR" in the "ENV" section of '
+        "%USERPROFILE%/TmrlData/config/config.json (see docs/TRACKMANIA.md)."
+    )
+    if not isinstance(observation_space, spaces.Tuple):
+        raise ValueError(
+            f"Expected a Tuple observation space (LIDAR preset), got "
+            f"{type(observation_space).__name__}. {hint}"
+        )
+    shapes = tuple(getattr(space, "shape", None) for space in observation_space.spaces)
+    if shapes != expected_shapes:
+        raise ValueError(f"Expected observation shapes {expected_shapes}, got {shapes}. {hint}")
+    if not isinstance(action_space, spaces.Box) or action_space.shape != (ACTION_DIM,):
+        raise ValueError(
+            f"Expected a Box(({ACTION_DIM},)) action space, got {action_space}. {hint}"
+        )
+
+
 class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
     """Flatten and normalize tmrl's tuple observations into a single ``Box``.
 
@@ -74,6 +111,7 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
 
     def __init__(self, env: TMEnvProtocol, max_speed: float = 1000.0, max_lidar: float = 400.0):
         super().__init__()
+        validate_tmrl_spaces(env.observation_space, env.action_space)
         self._env = env
         self._max_speed = max_speed
         self._max_lidar = max_lidar
@@ -112,6 +150,27 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
         clipped = np.clip(np.asarray(action, dtype=np.float32), -1.0, 1.0)
         obs, reward, terminated, truncated, info = self._env.step(clipped)
         return self._flatten(obs), reward, terminated, truncated, info
+
+    def wait(self) -> None:
+        """Release real-time control of the underlying environment.
+
+        rtgym keeps applying the last action in real time between ``step``
+        calls; its environments expose ``wait()`` to signal that the caller is
+        pausing (end of training, long computation) so the car is released
+        instead of replaying the last action forever. Environments without a
+        ``wait`` method (e.g. test fakes) make this a no-op.
+        """
+        waiter = getattr(self._env, "wait", None)
+        if waiter is None:
+            waiter = getattr(getattr(self._env, "unwrapped", self._env), "wait", None)
+        if callable(waiter):
+            waiter()
+
+    def close(self) -> None:
+        """Close the underlying environment if it supports closing."""
+        closer = getattr(self._env, "close", None)
+        if callable(closer):
+            closer()
 
     def _flatten(self, obs: tuple[Any, ...]) -> NDArray[np.float32]:
         """Concatenate and normalize a tmrl LIDAR tuple observation.
