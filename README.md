@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Status](https://img.shields.io/badge/Status-In%20Development-orange)
 
-> A model-free reinforcement learning agent that solves the Gymnasium Taxi-v3 environment using Q-Learning, SARSA, and brute-force baselines. Epitech T-AIA-902 project.
+> Model-free reinforcement learning agents solving the Gymnasium Taxi-v3 environment — seven algorithms from a brute-force baseline to DQN, benchmarked with a full statistical protocol. Epitech T-AIA-902 project.
 
 ## Table of Contents
 
@@ -14,9 +14,9 @@
 - [Features](#features)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
+- [Results](#results)
 - [Project Structure](#project-structure)
 - [Algorithms](#algorithms)
-- [Benchmarking & Visualization](#benchmarking--visualization)
 - [Tech Stack](#tech-stack)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
@@ -26,236 +26,297 @@
 
 ## About
 
-Taxi Driver solves the classic **Taxi-v3** discrete control problem from Gymnasium using optimized model-free episodic reinforcement learning algorithms. The taxi must navigate a 5x5 grid to pick up passengers at one of 4 locations and drop them off at the correct destination.
+Taxi Driver solves the classic **Taxi-v3** discrete control problem from Gymnasium using optimized model-free episodic reinforcement learning algorithms. The taxi must navigate a 5x5 grid to pick up a passenger at one of 4 locations and drop them off at the correct destination.
 
 **Environment details:**
 - **State space:** 500 discrete states (25 taxi positions x 5 passenger locations x 4 destinations)
 - **Action space:** 6 actions (North, South, East, West, Pickup, Dropoff)
 - **Rewards:** +20 for successful dropoff, -1 per step, -10 for illegal pickup/dropoff
 
-The project implements multiple RL algorithms (Q-Learning, SARSA), compares them against a brute-force baseline, and produces comprehensive benchmark reports demonstrating that a fine-tuned RL agent solves the problem in ~13 steps vs ~350 for random exploration.
+The project implements seven algorithms, compares them under a pre-registered experimental protocol ([docs/PROTOCOLE.md](docs/PROTOCOLE.md)), and shows that every tuned TD learner reaches the optimal policy (mean test reward 8.05 = R\*, ~13 steps per trip) while the brute-force baseline averages ≈ -770 reward and rarely finishes at all.
 
 ## Features
 
-**Core Algorithms**
-- Q-Learning agent with configurable hyperparameters (alpha, gamma, epsilon, decay)
-- SARSA on-policy agent for comparison with off-policy Q-Learning
-- Brute-force random baseline for comparison
-- Monte Carlo first-visit agent (optional comparison)
+**Algorithms (7)**
+- **BruteForce** — uniform random baseline
+- **Q-Learning**, **SARSA**, **Expected SARSA**, **Double Q-Learning** — tabular TD control
+- **Monte Carlo (first-visit)** — tabular episodic control
+- **DQN** — PyTorch MLP with experience replay, soft target updates and Double-DQN targets (enabled by default)
 
-**Extensions (Bonus)**
-- Deep Q-Network (DQN) agent with experience replay and target network
+**Exploration strategies**
+- ε-greedy with exponential or linear decay (optionally parameterised as a fraction of the training horizon via `--decay-frac`)
+- Boltzmann (softmax) with temperature decay
+- UCB (upper confidence bound)
 
-**Execution Modes**
-- **Tuning mode** — interactively tune algorithm parameters and observe training
-- **Optimal mode** — train and solve using pre-optimized parameters
+**Reward shaping** (`--reward-shaping`)
+- `potential` — potential-based shaping (Ng et al., 1999), preserves the optimal policy
+- `naive_distance` — naive distance bonus (kept as a counter-example)
+- `step_penalty` — extra per-step penalty
+- Reported metrics always use the **native** reward, even when shaping is active
 
-**Analysis & Benchmarking**
-- Multi-algorithm comparison framework (BruteForce vs Q-Learning vs DQN)
-- Hyperparameter sweep with grid search
-- Reward shaping experiments
-- Exportable results (CSV/JSON)
+**Subject execution modes**
+- **user mode** — interactive: prompts for the agent, its hyperparameters and the train/test episode counts, then trains and evaluates
+- **time-limited mode** — loads the optimized configuration (`configs/optimized.yaml`) and trains within a wall-clock budget (`--time`, default 60 s) with early stopping
 
-**Visualization**
-- Learning curves (reward and steps per episode)
-- Q-table heatmaps
-- Episode replay (terminal rendering)
-- Comparative charts across algorithms
+**Extensions**
+- **Multi-passenger environment** (`--env multi`) — 2 passengers, 14,400 states (25 x 6² x 4²), with route-optimality analysis
+- **TrackMania 2020 deep-RL extension** — SAC via Stable-Baselines3 + `tmrl`; shippable but requires the machine running the game (see [docs/TRACKMANIA.md](docs/TRACKMANIA.md))
 
-**Bonus**
-- Extended 2-passenger environment with route optimization
-- TrackMania deep RL extension (continuous state/action space with PPO/SAC via Stable-Baselines3)
+**Benchmarking & analysis**
+- Experiment campaign **E0–E7** (822 runs, ~4h30–5h30 on 6 cores), resumable and idempotent
+- Statistical pipeline: Welch t-test / Mann-Whitney U, Holm correction per hypothesis family, effect sizes (Hedges g, Cliff's δ)
+- Figure generation (learning curves, boxplots, grid heatmaps, Q-value heatmap, episode GIF) from raw results — no re-runs needed
+- 225 unit/integration tests (slow training tests behind a pytest marker), CI via GitHub Actions
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.10 or higher
-- pip
+- Python 3.10–3.12
+- [Poetry](https://python-poetry.org/)
 
 ### Installation
 
 ```bash
 git clone https://github.com/T-AIA-902-Taxi-Driver/Taxi-Driver.git
 cd Taxi-Driver
-poetry install
-poetry shell
+poetry install                  # core project
+poetry install -E trackmania    # optional: + Stable-Baselines3 for the TrackMania extension
 ```
 
-### Quick Validation
+> **Note on the Gymnasium pin:** `gymnasium` is pinned to `>=1.0,<1.3` because Taxi-v3 was removed in gymnasium 1.3.0 (replaced by Taxi-v4, which is identical with default parameters). The subject mandates Taxi-v3, hence the pin.
+
+### Quick validation
 
 ```bash
-python -m src.main train --algorithm qlearning --episodes 100 --test-episodes 10
+poetry run taxi-driver train --non-interactive --agent q_learning \
+    --train-episodes 2000 --test-episodes 20
 ```
 
 ## Usage
 
-### Tuning Mode
+All commands are shown as `python -m src.main …`, which works in any environment with the dependencies installed. Inside the Poetry environment, the `taxi-driver` console script is equivalent (`poetry run taxi-driver …`).
 
-Interactively set algorithm parameters:
-
-```bash
-python -m src.main train --mode tuning \
-    --algorithm qlearning \
-    --alpha 0.1 \
-    --gamma 0.99 \
-    --epsilon 1.0 \
-    --epsilon-decay 0.995 \
-    --episodes 10000 \
-    --test-episodes 100
-```
-
-### Optimal Mode
-
-Use pre-optimized parameters:
+### User mode (interactive)
 
 ```bash
-python -m src.main train --mode optimal --episodes 5000 --test-episodes 100
+python -m src.main train
 ```
 
-### CLI Flags
+Prompts for the agent, its hyperparameters (alpha, gamma, exploration strategy and its parameters), then the training and test episode counts (a subject requirement — both are entered at launch), prints a configuration recap and asks for confirmation. It then trains, saves the model to `models/`, evaluates greedily on a fixed set of test episodes and replays a few episodes in the terminal.
+
+### Non-interactive (flags)
+
+Any prompt can be replaced by a flag; `--non-interactive` suppresses all prompts (missing values fall back to `configs/default.yaml`):
+
+```bash
+python -m src.main train --non-interactive --agent q_learning \
+    --train-episodes 10000 --test-episodes 100 \
+    --alpha 0.3 --gamma 0.95 --save models/my_q_learning.npz
+```
+
+### Time-limited mode
+
+```bash
+python -m src.main train --mode time-limited --time 60
+```
+
+Loads `configs/optimized.yaml` (the grid-search winner), caps training at 90 % of the wall-clock budget and stops early once the rolling mean training reward reaches 8.0, then evaluates on 100 episodes. In interactive use it only prompts for the maximum training episodes and the test episodes; add `--non-interactive` to skip the prompts.
+
+### Evaluate and replay a saved model
+
+Trained models for all six learners ship in `models/final/`:
+
+```bash
+python -m src.main eval --model models/final/q_learning.npz --test-episodes 100
+python -m src.main play --model models/final/q_learning.npz --episodes 3 --delay 0.2
+```
+
+### Compare agents head-to-head
+
+```bash
+python -m src.main compare --agents brute_force,q_learning,sarsa \
+    --train-episodes 15000 --n-seeds 5 --workers 6
+```
+
+Trains each agent on `--n-seeds` seeds, evaluates all of them on the **same** fixed evaluation episodes, and prints a summary table plus Holm-corrected pairwise tests.
+
+### Hyperparameter sweep
+
+```bash
+python -m src.main benchmark --sweep-config configs/benchmark_sweep.yaml --workers 6
+```
+
+Runs the YAML-defined grid (the default file mirrors block E1a: 5 alpha x 4 gamma x 10 seeds = 200 runs) and ranks configurations by mean test reward. `--write-optimized` promotes the winning configuration to `configs/optimized.yaml`.
+
+### Full campaign, figures and statistics
+
+```bash
+python scripts/run_campaign.py --dry-run          # lists the 822 runs of blocks E0-E7
+python scripts/run_campaign.py                    # full campaign, ~4h30-5h30 on 6 cores
+python scripts/run_campaign.py --blocks e0,e2     # selected blocks only (resumable)
+python scripts/make_figures.py                    # figures F1-F12 from results/ (no re-runs)
+python scripts/run_stats.py                       # hypothesis tests H1-H9, one CSV per family
+```
+
+Blocks E0–E6 run in parallel; E7 re-runs the head-to-head configurations sequentially and is the only legitimate source of timing/memory measurements. `make_figures.py` and `run_stats.py` read only `results/raw/` + `results/aggregated/` and skip missing blocks, so they work on partial campaigns (`--figures f1,f3,f5`, `--families h1,h2`).
+
+### TrackMania extension
+
+```bash
+poetry install -E trackmania
+python scripts/train_trackmania.py --timesteps 500000 --seed 42
+```
+
+Must run on the Windows machine hosting TrackMania 2020, OpenPlanet and `tmrl` (the script exits with actionable instructions when a game-machine dependency is missing). Setup, track and reward details: [docs/TRACKMANIA.md](docs/TRACKMANIA.md).
+
+### Main `train` flags
+
+Defaults come from `configs/default.yaml`; CLI flags take precedence (`defaults < --config file < flags`).
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--mode` | Execution mode (`tuning` / `optimal`) | `tuning` |
-| `--algorithm` | Algorithm (`qlearning` / `sarsa` / `bruteforce` / `montecarlo` / `dqn`) | `qlearning` |
-| `--episodes` | Number of training episodes | `10000` |
+| `--mode` | `user` / `time-limited` | `user` |
+| `--agent` | `brute_force`, `q_learning`, `sarsa`, `expected_sarsa`, `double_q_learning`, `monte_carlo`, `dqn` | `q_learning` |
+| `--env` | `taxi` (Taxi-v3) / `multi` (2-passenger extension) | `taxi` |
+| `--config` | YAML configuration file | mode-dependent |
+| `--time` | Wall-clock training budget in seconds (time-limited mode) | `60` |
+| `--train-episodes` | Number of training episodes | `10000` |
 | `--test-episodes` | Number of evaluation episodes | `100` |
 | `--alpha` | Learning rate | `0.1` |
 | `--gamma` | Discount factor | `0.99` |
-| `--epsilon` | Initial exploration rate | `1.0` |
-| `--epsilon-decay` | Epsilon decay rate | `0.995` |
-| `--render` | Display episode replays | `false` |
-| `--save-model` | Path to save trained model | — |
-| `--load-model` | Path to load pre-trained model | — |
-| `--seed` | Random seed for reproducibility | `42` |
+| `--exploration` | `epsilon_greedy` / `boltzmann` / `ucb` | `epsilon_greedy` |
+| `--epsilon`, `--epsilon-min` | Initial / floor exploration rate | `1.0` / `0.01` |
+| `--epsilon-decay`, `--decay-type` | Per-episode decay, `exp` or `linear` | `0.9995`, `exp` |
+| `--decay-frac` | ε reaches ε_min at this fraction of the horizon (overrides `--epsilon-decay`) | unset |
+| `--temperature` | Boltzmann temperature | `1.0` |
+| `--ucb-c` | UCB exploration constant | `2.0` |
+| `--reward-shaping` | `none` / `potential` / `naive_distance` / `step_penalty` | `none` |
+| `--lr`, `--device` | DQN learning rate, `auto`/`cpu`/`cuda` | `0.001`, `auto` |
+| `--save` | Model output path (`.npz` tabular / `.pt` DQN) | timestamped in `models/` |
+| `--show-episodes` | Episodes replayed after evaluation | `3` |
+| `--seed` | Random seed | `42` |
+| `--non-interactive` | Never prompt (CI-friendly) | off |
+
+## Results
+
+Headline numbers from the benchmark campaign (10 seeds per configuration, greedy evaluation on the **same** fixed 100 episodes for every agent; protocol in [docs/PROTOCOLE.md](docs/PROTOCOLE.md)):
+
+- **Optimal reference:** R\* = **8.05** mean reward, computed by value iteration on the exact Taxi-v3 model — used purely as a measuring instrument; all agents remain model-free.
+- **Head-to-head (block E2):** Q-Learning, Expected SARSA, Double Q-Learning and DQN all reach **8.05 mean test reward** (SARSA: 7.97), **~12.95 steps** per trip and **100 % success**. The brute-force baseline averages **≈ -770 reward** (~196 steps under the 200-step cap, < 5 % success).
+- **Time-limited mode:** with a 30 s budget, training stops early (rolling mean reward ≥ 8.0) after **14.2 s** and still scores **8.05 mean reward, 100 % success** on the 100-episode test set.
+- **Grid search (E1a, 5 alpha x 4 gamma):** 15/20 configurations reach the optimal policy; ties broken by convergence speed give **alpha = 0.30, gamma = 0.95** (~980 episodes to threshold), promoted to `configs/optimized.yaml`.
+- **Monte Carlo** does not converge within the 15,000-episode budget on **any** of its 10 runs (censored), confirming hypothesis H8.
+
+| | |
+|---|---|
+| ![Learning curves](results/figures/F1_courbes_apprentissage.png) | ![Steps per episode](results/figures/F4_barplot_steps.png) |
+
+![Convergence heatmap](results/figures/F5b_heatmap_convergence.png)
+
+Full analysis: [docs/RAPPORT.md](docs/RAPPORT.md) (report, in French), all figures in [results/figures/](results/figures/), aggregated data and statistics in `results/aggregated/`.
 
 ## Project Structure
 
 ```
 Taxi-Driver/
 ├── src/
-│   ├── main.py                  # CLI entry point
-│   ├── config.py                # Configuration management
+│   ├── main.py                    # CLI entry point (python -m src.main / taxi-driver)
+│   ├── config.py                  # Config dataclass: defaults < YAML < CLI
 │   ├── agents/
-│   │   ├── base_agent.py        # Abstract base agent (ABC)
-│   │   ├── brute_force_agent.py # Random action baseline
-│   │   ├── q_learning_agent.py  # Tabular Q-Learning
-│   │   ├── sarsa_agent.py        # SARSA on-policy
-│   │   ├── dqn_agent.py         # Deep Q-Network (extension)
-│   │   └── monte_carlo_agent.py # Monte Carlo first-visit
+│   │   ├── base_agent.py          # Abstract agent interface
+│   │   ├── tabular_agent.py       # Shared Q-table logic
+│   │   ├── brute_force_agent.py   # Random baseline
+│   │   ├── q_learning_agent.py    # Q-Learning
+│   │   ├── sarsa_agent.py         # SARSA
+│   │   ├── expected_sarsa_agent.py
+│   │   ├── double_q_learning_agent.py
+│   │   ├── monte_carlo_agent.py   # First-visit Monte Carlo
+│   │   ├── exploration.py         # ε-greedy (exp/linear), Boltzmann, UCB
+│   │   └── dqn/                   # DQN agent, Q-network, replay buffer
 │   ├── environments/
-│   │   ├── taxi_wrapper.py      # Gymnasium Taxi-v3 wrapper
-│   │   ├── multi_passenger_env.py # 2-passenger extension (bonus)
-│   │   └── trackmania_wrapper.py  # TrackMania wrapper (bonus deep RL)
-│   ├── training/
-│   │   ├── trainer.py           # Generic training pipeline
-│   │   └── callbacks.py         # Logging, early stopping
-│   ├── evaluation/
-│   │   ├── evaluator.py         # Agent evaluation
-│   │   └── metrics.py           # Metrics computation
-│   ├── benchmarking/
-│   │   ├── benchmarker.py       # Parameter sweep & comparison
-│   │   └── reward_shaping.py    # Custom reward functions
-│   └── visualization/
-│       ├── plots.py             # Learning curves, heatmaps
-│       └── episode_replay.py    # Terminal episode replay
+│   │   ├── taxi_wrapper.py        # Gymnasium Taxi-v3 wrapper
+│   │   ├── multi_passenger_env.py # 2-passenger extension (14,400 states)
+│   │   ├── route_analysis.py      # Route-optimality analysis (multi)
+│   │   └── trackmania_wrapper.py  # TrackMania/tmrl wrapper (extension)
+│   ├── training/                  # Trainer + callbacks (logging, early stop, time budget)
+│   ├── evaluation/                # Evaluator + metrics (fixed-seed eval episodes)
+│   ├── benchmarking/              # Sweeps, reward shaping, stats, value iteration (R*)
+│   ├── visualization/             # Plots + terminal episode replay
+│   ├── cli/                       # Parser, interactive prompts, subcommands
+│   └── utils/                     # Seeding helpers
+├── scripts/
+│   ├── run_campaign.py            # Campaign driver, blocks E0-E7 (822 runs)
+│   ├── make_figures.py            # Figures F1-F12 from results/
+│   ├── run_stats.py               # Hypothesis tests H1-H9
+│   └── train_trackmania.py        # SAC training on TrackMania (game machine only)
 ├── configs/
-│   ├── default.yaml             # Default hyperparameters
-│   ├── optimized.yaml           # Optimized preset (timed mode)
-│   └── benchmark_sweep.yaml     # Grid search configuration
-├── models/                      # Saved Q-tables & model weights
-├── results/                     # Benchmark outputs & plots
-├── tests/                       # Unit & integration tests
-├── docs/
-│   ├── Epitech-TD.pdf           # Epitech project specification
-│   ├── CADRAGE.md               # Project framing document
-│   ├── ARCHITECTURE.md          # Software architecture
-│   └── BACKLOG.md               # Product backlog (WSJF)
-├── .github/workflows/ci.yml     # CI pipeline
-├── pyproject.toml               # Poetry config (deps, scripts, tools)
-├── poetry.lock                  # Locked dependency versions
+│   ├── default.yaml               # Commented reference of every field (user mode)
+│   ├── optimized.yaml             # Grid-search winner (time-limited mode)
+│   └── benchmark_sweep.yaml       # E1a grid definition for `benchmark`
+├── models/final/                  # Trained models for the 6 learners
+├── results/                       # aggregated/, figures/, raw/, r_star.json
+├── tests/                         # 225 unit & integration tests
+├── docs/                          # Framing, architecture, protocol, report, TrackMania
+├── pyproject.toml                 # Poetry config (deps, extras, console script, tooling)
 └── README.md
 ```
 
 ## Algorithms
 
-### Q-Learning (Tabular)
-
-Off-policy TD control using a state-action value table. Bellman update:
+### Q-Learning (off-policy TD)
 
 ```
 Q(s,a) <- Q(s,a) + alpha * [r + gamma * max_a' Q(s',a') - Q(s,a)]
 ```
 
-Ideal for Taxi-v3's small discrete state space (500 states x 6 actions). Converges in ~2,000-5,000 episodes to near-optimal performance (~13 steps/episode).
+Learns the greedy policy regardless of the exploration behaviour. Fastest to converge in our campaign (~1,700 episodes to threshold at the reference configuration).
 
-### SARSA (On-Policy)
-
-On-policy TD control using a state-action value table. Update rule:
+### SARSA (on-policy TD)
 
 ```
 Q(s,a) <- Q(s,a) + alpha * [r + gamma * Q(s',a') - Q(s,a)]
 ```
 
-where `a'` is the action **actually taken** by the policy (not the greedy max). SARSA learns from its own exploration behavior, making it more conservative than Q-Learning. It is more stable under high exploration rates but may converge more slowly.
+where `a'` is the action **actually taken**. SARSA learns from its own exploration; Q-Learning learns as if it never explored.
 
-Key difference with Q-Learning: SARSA learns with its mistakes, Q-Learning learns as if it never made any.
+### Expected SARSA
 
-### Deep Q-Network (DQN) — Extension
+Replaces the sampled `Q(s',a')` with the expectation over the current policy, reducing update variance at a small extra compute cost per step.
 
-*(Bonus extension)* Neural network approximation of Q-values with experience replay and target network stabilization. Included for comparative analysis — demonstrates how DQN handles discrete environments vs. tabular methods.
+### Double Q-Learning
 
-### PPO / SAC -- TrackMania Extension
+Two Q-tables with decoupled action selection and evaluation (van Hasselt, 2010) to reduce the overestimation bias of the max operator — measured directly in the campaign (block E2/H7).
 
-*(Bonus extension)* For the TrackMania environment, deep RL algorithms from **Stable-Baselines3** are used. **PPO** (Proximal Policy Optimization) and **SAC** (Soft Actor-Critic) handle the continuous observation space (LIDAR vectors) and continuous action space (acceleration, steering) that tabular methods cannot address. This extension demonstrates the transition from discrete RL (Taxi-v3) to continuous deep RL.
+### Monte Carlo (first-visit)
 
-### Brute-Force Baseline
+Averages full-episode returns from first visits to each (s,a) pair. No bootstrapping: on Taxi-v3's long, sparsely rewarded episodes it fails to converge within 15,000 episodes (0/10 runs).
 
-Uniform random action selection. Provides the lower-bound baseline (~350 steps/episode). Essential reference point for demonstrating RL improvement.
+### Deep Q-Network (DQN)
 
-### Monte Carlo (First-Visit)
+PyTorch MLP over one-hot states with experience replay, soft target-network updates (Polyak τ) and **Double-DQN targets** (enabled by default). Included to quantify the cost of function approximation on a small discrete MDP: it matches the tabular agents' final policy (8.05) but needs far more compute (hypothesis H6).
 
-On-policy episodic method averaging returns from first visits to each state-action pair. Offers an alternative convergence profile compared to TD methods.
+### SAC — TrackMania extension
 
-## Benchmarking & Visualization
-
-### Metrics Tracked
-
-| Metric | Target |
-|--------|--------|
-| Mean reward per episode | > 7.0 |
-| Mean steps per episode | < 15 |
-| Success rate | > 95% |
-| Convergence episodes | < 5,000 |
-| Improvement ratio vs brute-force | ~20x |
-
-### Generated Plots
-
-- **Learning curves** — reward and steps over training episodes
-- **Algorithm comparison** — side-by-side bar charts and overlaid curves
-- **Q-table heatmap** — visualize learned state-action values
-- **Hyperparameter sensitivity** — performance vs. alpha, gamma, epsilon
-
-Sample outputs are saved to `results/`.
+For TrackMania 2020 (via `tmrl`), the environment is real-time and single-instance, so every transition is expensive: off-policy **SAC** (Stable-Baselines3) is used rather than PPO for its sample efficiency, native continuous `[gas, brake, steer]` action support and entropy-driven exploration. See [docs/TRACKMANIA.md](docs/TRACKMANIA.md).
 
 ## Tech Stack
 
 | Technology | Purpose |
 |---|---|
-| Python 3.10+ | Core language |
-| Poetry | Dependency management & virtualenv |
-| Gymnasium | RL environment (Taxi-v3) |
-| NumPy | Numerical computation, Q-table storage |
-| PyTorch | DQN neural network |
-| Matplotlib / Seaborn | Visualization & plots |
-| PyYAML | Configuration files |
-| argparse | CLI interface |
-| pytest | Testing framework |
-| ruff / black | Linting & formatting |
-| mypy | Static type checking |
-| Stable-Baselines3 | Deep RL algorithms (PPO, SAC) for TrackMania extension |
-| GitHub Actions | CI/CD pipeline |
+| Python 3.10–3.12 | Core language |
+| Poetry | Dependency management, `taxi-driver` console script, `trackmania` extra |
+| Gymnasium (>=1.0, <1.3) | RL environment — pinned because Taxi-v3 was removed in 1.3.0 |
+| NumPy | Q-tables, numerical computation |
+| PyTorch | DQN network |
+| pandas / SciPy | Campaign aggregation, statistical tests |
+| Matplotlib / Seaborn | Figures F1–F12 |
+| imageio / pygame | Episode GIF export, environment rendering |
+| PyYAML / argparse | Configuration files, CLI |
+| pytest / pytest-cov | 225 tests, coverage |
+| ruff / black / mypy (strict) / pre-commit | Linting, formatting, typing |
+| Stable-Baselines3 (optional extra) | SAC for the TrackMania extension |
+| GitHub Actions | CI pipeline |
 
 ## Documentation
 
@@ -264,15 +325,22 @@ Sample outputs are saved to `results/`.
 | [CADRAGE.md](docs/CADRAGE.md) | Project framing — process, user stories, metrics, risks |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Software architecture with Mermaid diagrams |
 | [BACKLOG.md](docs/BACKLOG.md) | Product backlog with WSJF prioritization |
+| [PROTOCOLE.md](docs/PROTOCOLE.md) | Experimental protocol — hypotheses H1–H9, blocks E0–E7, statistics |
+| [RAPPORT.md](docs/RAPPORT.md) | Full report (French) — results, analysis, discussion |
+| [TRACKMANIA.md](docs/TRACKMANIA.md) | TrackMania extension — setup, environment, SAC training |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution workflow and conventions |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [Epitech-TD.pdf](docs/Epitech-TD.pdf) | Epitech project specification |
 
 ## Contributing
 
 1. Branch from `dev` using the convention `feature/<name>` or `fix/<name>`
-2. Follow [PEP 8](https://peps.python.org/pep-0008/) with type hints
+2. Follow [PEP 8](https://peps.python.org/pep-0008/) with type hints (`mypy --strict` on `src/`)
 3. Write tests for new functionality
 4. Submit a PR to `dev` — squash merge after review
 5. Use conventional commits: `type(scope): description`
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Team
 
@@ -289,12 +357,14 @@ Sample outputs are saved to `results/`.
 - Sutton, R. S., & Barto, A. G. (2018). *Reinforcement Learning: An Introduction* (2nd ed.). MIT Press.
 - Watkins, C. J. C. H. (1989). *Learning from Delayed Rewards*. PhD thesis, Cambridge University.
 - Rummery, G. A., & Niranjan, M. (1994). *On-line Q-learning using connectionist systems*. Technical Report CUED/F-INFENG/TR 166, Cambridge University.
+- van Hasselt, H. (2010). Double Q-learning. *NeurIPS 23*.
+- Ng, A. Y., Harada, D., & Russell, S. (1999). Policy invariance under reward transformations: theory and application to reward shaping. *ICML*.
 - Mnih, V., et al. (2015). Human-level control through deep reinforcement learning. *Nature*, 518(7540), 529-533.
-- Schulman, J., et al. (2017). Proximal Policy Optimization Algorithms. *arXiv:1707.06347*.
+- Haarnoja, T., et al. (2018). Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor. *ICML*.
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License (declared in [pyproject.toml](pyproject.toml)).
 
 ---
 

@@ -49,6 +49,7 @@ results/*
 !results/.gitkeep
 !results/aggregated/
 !results/figures/
+!results/r_star.json
 
 # Jupyter
 .ipynb_checkpoints/

@@ -1,0 +1,5 @@
+,eval_mean_reward,eval_mean_reward,eval_mean_steps,eval_mean_steps,eval_success_rate,eval_success_rate
+,mean,std,mean,std,mean,std
+algorithm,,,,,,
+q_learning,17.709,0.19823947358911356,24.291,0.19823947358911356,1.0,0.0
+sarsa,18.03,0.20352450029965,23.97,0.20352450029965,1.0,0.0
