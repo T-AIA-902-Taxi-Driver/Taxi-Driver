@@ -15,6 +15,7 @@ environment on any machine, without the game.
 
 from __future__ import annotations
 
+import time
 from typing import Any, Final, Protocol, SupportsFloat
 
 import gymnasium as gym
@@ -26,6 +27,14 @@ SPEED_DIM: Final = 1
 LIDAR_SHAPE: Final = (4, 19)
 ACTION_DIM: Final = 3
 OBS_DIM: Final = SPEED_DIM + LIDAR_SHAPE[0] * LIDAR_SHAPE[1] + 2 * ACTION_DIM  # 83
+
+# tmrl plugs its virtual gamepad on the first reset. Windows tears down the
+# XInput child-device stack once the last pad unplugs, and the next first-plug
+# re-installs it — which can exceed ViGEm's attach timeout while the game loads
+# the CPU. The failure is transient: retrying the plug succeeds. These control
+# the retry loop in TrackManiaEnvWrapper.reset (tests shrink the delay).
+VIGEM_ATTACH_RETRIES: Final = 3
+VIGEM_RETRY_DELAY_S = 2.0
 
 
 class TMEnvProtocol(Protocol):
@@ -123,6 +132,10 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
     ) -> tuple[NDArray[np.float32], dict[str, Any]]:
         """Reset the underlying environment and flatten its observation.
 
+        The virtual-gamepad plug that tmrl performs on its first reset can
+        fail transiently (see ``VIGEM_ATTACH_RETRIES``); that specific
+        assertion is retried, every other error propagates untouched.
+
         Args:
             seed: Optional seed forwarded to the underlying environment.
             options: Optional options dictionary forwarded as-is.
@@ -131,8 +144,20 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
             Tuple ``(flattened observation, info)``.
         """
         super().reset(seed=seed)
-        obs, info = self._env.reset(seed=seed, options=options)
-        return self._flatten(obs), info
+        last_error: AssertionError | None = None
+        for _ in range(VIGEM_ATTACH_RETRIES):
+            try:
+                obs, info = self._env.reset(seed=seed, options=options)
+                return self._flatten(obs), info
+            except AssertionError as exc:
+                if "ViGEmBus" not in str(exc):
+                    raise
+                last_error = exc
+                time.sleep(VIGEM_RETRY_DELAY_S)
+        raise RuntimeError(
+            f"Virtual gamepad failed to attach after {VIGEM_ATTACH_RETRIES} attempts. "
+            "Check that the ViGEmBus driver is installed and healthy (see docs/TRACKMANIA.md)."
+        ) from last_error
 
     def step(
         self, action: NDArray[np.float32]

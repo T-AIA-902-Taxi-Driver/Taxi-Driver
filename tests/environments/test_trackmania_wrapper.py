@@ -280,6 +280,53 @@ class TestWaitAndClose:
         wrapper.close()  # must not raise
 
 
+class TestVigemRetry:
+    class _FlakyFake(FakeTMEnv):
+        """Fails the first N resets with the ViGEmBus attach assertion."""
+
+        def __init__(self, failures: int, message: str = "could not connect to ViGEmBus.") -> None:
+            super().__init__()
+            self.failures = failures
+            self.message = message
+            self.reset_calls = 0
+
+        def reset(
+            self, *, seed: int | None = None, options: dict[str, Any] | None = None
+        ) -> tuple[Any, dict[str, Any]]:
+            self.reset_calls += 1
+            if self.reset_calls <= self.failures:
+                raise AssertionError(self.message)
+            return super().reset(seed=seed, options=options)
+
+    def test_transient_attach_failure_is_retried(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import src.environments.trackmania_wrapper as tw
+
+        monkeypatch.setattr(tw, "VIGEM_RETRY_DELAY_S", 0.0)
+        fake = self._FlakyFake(failures=1)
+        wrapper = TrackManiaEnvWrapper(fake)
+        obs, _ = wrapper.reset()
+        assert obs.shape == (OBS_DIM,)
+        assert fake.reset_calls == 2
+
+    def test_persistent_attach_failure_raises_runtime_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import src.environments.trackmania_wrapper as tw
+
+        monkeypatch.setattr(tw, "VIGEM_RETRY_DELAY_S", 0.0)
+        fake = self._FlakyFake(failures=99)
+        wrapper = TrackManiaEnvWrapper(fake)
+        with pytest.raises(RuntimeError, match="ViGEmBus"):
+            wrapper.reset()
+
+    def test_unrelated_assertion_propagates_immediately(self) -> None:
+        fake = self._FlakyFake(failures=99, message="something else broke")
+        wrapper = TrackManiaEnvWrapper(fake)
+        with pytest.raises(AssertionError, match="something else"):
+            wrapper.reset()
+        assert fake.reset_calls == 1
+
+
 class TestMakeTrackmaniaEnv:
     def test_missing_tmrl_raises_actionable_import_error(self) -> None:
         if importlib.util.find_spec("tmrl") is not None:
