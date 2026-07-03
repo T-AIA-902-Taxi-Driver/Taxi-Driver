@@ -1,4 +1,4 @@
-"""Generate the report figures (F1-F12) from campaign data in results/.
+"""Generate the report figures (F1-F14) from campaign data in results/.
 
 Reads ONLY results/raw + results/aggregated (+ r_star.json); never re-runs
 experiments. Any figure can therefore be regenerated at will:
@@ -280,6 +280,34 @@ def fig_f12(results: Path, out: Path) -> None:
         )
 
 
+def fig_f13_f14(results: Path, out: Path) -> None:
+    """TrackMania SAC learning curves from the SB3 Monitor log (game machine)."""
+    monitor = results / "trackmania" / "monitor.csv"
+    if not monitor.exists():
+        print(f"  [skip] {monitor} missing")
+        return
+    # SB3 Monitor CSVs start with a '#{json}' metadata line; columns are
+    # r (episode reward), l (episode length), t (wall-clock since start).
+    frame = pd.read_csv(monitor, skiprows=1)
+    if frame.empty:
+        print(f"  [skip] {monitor} has no episodes")
+        return
+    timesteps = list(frame["l"].cumsum().astype(float))
+    plots.trackmania_learning_curve(
+        timesteps,
+        list(frame["r"].astype(float)),
+        out / "F13_trackmania_reward.png",
+        title="TrackMania — récompense par épisode (SAC)",
+    )
+    plots.trackmania_learning_curve(
+        timesteps,
+        list(frame["l"].astype(float)),
+        out / "F14_trackmania_longueur_episodes.png",
+        ylabel="Pas par épisode",
+        title="TrackMania — longueur des épisodes (SAC)",
+    )
+
+
 FIGURES = {
     "f1": fig_f1_f2,
     "f3": fig_f3_f4,
@@ -289,6 +317,7 @@ FIGURES = {
     "f10": fig_f10,
     "f11": fig_f11,
     "f12": fig_f12,
+    "f13": fig_f13_f14,
 }
 
 

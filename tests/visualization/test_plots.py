@@ -16,6 +16,7 @@ from src.visualization.plots import (
     sample_efficiency_plot,
     sensitivity_curves,
     steps_barplot,
+    trackmania_learning_curve,
 )
 
 RNG = np.random.default_rng(0)
@@ -86,6 +87,13 @@ class TestFigureGenerators:
         x = [100.0, 1_000.0, 10_000.0, 100_000.0]
         series = {"QL": (x, [[-200.0, -50.0, 5.0, 8.0]] * 3)}
         assert sample_efficiency_plot(series, tmp_path / "f9.png").exists()
+
+    def test_trackmania_learning_curve(self, tmp_path: Path) -> None:
+        lengths = RNG.integers(20, 400, size=80)
+        timesteps = list(np.cumsum(lengths).astype(float))
+        rewards = list(RNG.normal(50, 20, size=80))
+        path = trackmania_learning_curve(timesteps, rewards, tmp_path / "f13.png")
+        assert path.exists() and path.stat().st_size > 10_000
 
 
 class TestEpisodeGif:
