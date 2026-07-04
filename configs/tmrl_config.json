@@ -90,7 +90,7 @@
       "act_buf_len": 2,
       "benchmark": false,
       "wait_on_done": true,
-      "ep_max_length": 1000,
+      "ep_max_length": 2000,
       "interface_kwargs": {
         "save_replays": false
       }

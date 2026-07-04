@@ -125,11 +125,18 @@ Action — `Box(-1, 1, (3,))` : `[gaz, frein, direction]`, clippée avant transm
 
 Récompense — **progression le long d'une trajectoire de démonstration** enregistrée par le
 plugin (fichier `TmrlData\reward\reward.pkl`, fourni pour les cartes tmrl ; à enregistrer soi-même
-pour une carte personnalisée). ~0,01–0,2 par pas en avancement normal, bonus `END_OF_TRACK`
-de **+100** en fin de piste. Fins d'épisode : `terminated` = fin de piste **ou** coupure
-`FAILURE_COUNTDOWN` (aucune progression) ; `truncated` = plafond `ep_max_length` (1000 pas).
-Un **tour complété** se détecte donc par `terminated` avec récompense finale ≥ 50
+pour une carte personnalisée). La trajectoire de `tmrl-test` compte 30 273 points, soit un
+total de progression de ~302,7 (1 point = 0,01) ; le **franchissement de la ligne d'arrivée**
+est signalé par le plugin lui-même (télémétrie du jeu) et vaut un bonus `END_OF_TRACK` de
+**+100** sur le dernier pas, avec `terminated`. Autres fins d'épisode : `terminated` par
+coupure `FAILURE_COUNTDOWN` (aucune progression, pas de bonus) ; `truncated` = plafond
+`ep_max_length`. Nous avons relevé ce plafond de 1000 à **2000 pas** (50 s → 100 s) : à 50 s,
+une politique en cours d'apprentissage n'atteint que ~60 % de la piste et **ne voit jamais ni
+la fin du circuit ni le bonus** — la coupure anti-stagnation suffit à éliminer les épisodes
+improductifs. Un **tour complété** se détecte par `terminated` avec récompense finale ≥ 50
 (seuil `--lap-bonus-threshold` d'`eval_trackmania.py`) ; le dict `info` de tmrl est vide.
+Attention à l'interprétation de `monitor.csv` : une récompense d'épisode ≥ 100 n'implique
+**pas** un tour complété (la progression seule peut dépasser 100) ; seul le bonus final fait foi.
 
 ## Hyperparamètres (configs/trackmania.yaml)
 
