@@ -56,6 +56,7 @@ results/*
 results/trackmania/tb/
 results/trackmania/*.pkl
 results/trackmania/*.log
+results/trackmania/*.pid
 
 # Jupyter
 .ipynb_checkpoints/
