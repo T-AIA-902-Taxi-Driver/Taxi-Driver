@@ -232,11 +232,35 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
         return flat
 
 
+def _focus_game_window() -> None:
+    """Best-effort: bring the game window to the foreground before driving.
+
+    TrackMania only processes (virtual) gamepad input while its window has
+    focus; a run launched without anyone clicking the game sends respawn and
+    steering inputs into the void. Failure here is non-fatal (Windows may
+    refuse foreground changes): the caller is warned and can click the window.
+    """
+    try:
+        import win32con
+        import win32gui
+
+        hwnd = win32gui.FindWindow(None, "Trackmania")
+        if hwnd == 0:
+            return
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        win32gui.SetForegroundWindow(hwnd)
+        if win32gui.GetWindowText(win32gui.GetForegroundWindow()) != "Trackmania":
+            print("WARNING: could not focus the game window; click it before training.")
+    except Exception as exc:
+        print(f"WARNING: game-window focus failed ({exc}); click the game window manually.")
+
+
 def make_trackmania_env() -> TrackManiaEnvWrapper:
     """Build the wrapped TrackMania environment from a live tmrl instance.
 
     ``tmrl`` is imported lazily so that this module stays importable (and
-    testable) on machines without the game.
+    testable) on machines without the game. The game window is brought to the
+    foreground (gamepad input requires focus).
 
     Returns:
         The tmrl environment wrapped in :class:`TrackManiaEnvWrapper`.
@@ -252,4 +276,5 @@ def make_trackmania_env() -> TrackManiaEnvWrapper:
             "machine with TrackMania 2020, OpenPlanet and `pip install tmrl`. "
             "See docs/TRACKMANIA.md for the full setup guide."
         ) from exc
+    _focus_game_window()
     return TrackManiaEnvWrapper(tmrl.get_environment())

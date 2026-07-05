@@ -80,6 +80,8 @@ module = [
     "tmrl.*",
     "stable_baselines3.*",
     "gymnasium.envs.*",
+    "win32gui",
+    "win32con",
 ]
 ignore_missing_imports = true
 
