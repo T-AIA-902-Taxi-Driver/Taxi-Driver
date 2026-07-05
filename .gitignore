@@ -1,1 +1,62 @@
+# Claude
 .claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Poetry
+poetry.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Models: raw checkpoints are ignored, final deliverable models are committed
+models/*
+!models/.gitkeep
+!models/final/
+
+# Results: raw experiment data is ignored, aggregated tables and figures are committed
+results/*
+!results/.gitkeep
+!results/aggregated/
+!results/figures/
+!results/r_star.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.*
+
+# TrackMania / tmrl local data
+TmrlData/

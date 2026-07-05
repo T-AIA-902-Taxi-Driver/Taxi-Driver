@@ -1,0 +1,56 @@
+# Default configuration (user mode).
+# Precedence: dataclass defaults < this file < CLI arguments.
+
+# --- General ----------------------------------------------------------------
+algorithm: q_learning        # brute_force | q_learning | sarsa | expected_sarsa
+                             # | double_q_learning | monte_carlo | dqn
+env: taxi                    # taxi (Taxi-v3) | multi (2-passenger extension)
+mode: user                   # user | time_limited
+seed: 42
+n_train_episodes: 10000
+n_test_episodes: 100
+max_steps_per_episode: 200
+time_budget: 60.0            # seconds (time-limited mode)
+
+# --- Tabular hyperparameters --------------------------------------------------
+alpha: 0.1                   # learning rate
+gamma: 0.99                  # discount factor
+
+# --- Exploration ---------------------------------------------------------------
+exploration: epsilon_greedy  # epsilon_greedy | boltzmann | ucb
+epsilon: 1.0                 # initial exploration rate
+epsilon_min: 0.01
+epsilon_decay: 0.9995        # per-episode multiplicative (exp) or subtractive (linear)
+decay_type: exp              # exp | linear
+decay_frac: null             # if set (0-1], epsilon reaches epsilon_min at this
+                             # fraction of the training horizon (overrides epsilon_decay)
+temperature: 1.0             # Boltzmann initial temperature
+temperature_min: 0.05
+temperature_decay: 0.999
+ucb_c: 2.0                   # UCB exploration constant
+
+# --- Reward shaping -------------------------------------------------------------
+reward_shaping: none         # none | potential | naive_distance | step_penalty
+
+# --- DQN --------------------------------------------------------------------------
+lr: 0.001
+batch_size: 64
+hidden_size: 128
+buffer_capacity: 50000
+warmup_steps: 1000
+train_every: 1
+tau: 0.005                   # soft target-network update coefficient
+double_dqn: true
+grad_clip: 10.0
+device: auto                 # auto | cpu | cuda
+
+# --- Training control ----------------------------------------------------------
+early_stopping: false        # keep disabled for benchmarks; time-limited mode enables it
+patience: 500
+target_reward: 8.0
+eval_interval: 0             # >0: greedy probe evaluation every N episodes
+n_probe_episodes: 30
+
+# --- IO ---------------------------------------------------------------------------
+model_path: models
+results_dir: results

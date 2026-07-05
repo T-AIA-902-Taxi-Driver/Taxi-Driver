@@ -1,0 +1,8 @@
+algorithm,train_s_mean,train_s_median,infer_ms,memory_kb
+brute_force,67.926,68.207,3.443,0.0
+double_q_learning,14.568,14.577,0.267,46.875
+dqn,383.923,374.071,4.766,2052.062
+expected_sarsa,20.129,19.909,0.253,23.438
+monte_carlo,23.716,23.808,0.619,46.875
+q_learning,12.168,12.176,0.253,23.438
+sarsa,14.058,14.055,0.257,23.438
