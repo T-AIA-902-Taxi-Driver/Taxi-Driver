@@ -1177,7 +1177,8 @@ latence — chiffrent ce que coûte l'approximation neuronale quand elle ne sert
 à rien, et l'ablation CPU/GPU rappelle que le GPU n'accélère pas
 mécaniquement de petits réseaux à petits lots. La valeur du deep RL est
 ailleurs : elle commence là où la table s'arrête, ce que l'extension
-TrackMania (section 7) matérialise sans avoir pu être exécutée.
+TrackMania (section 7.2), exécutée sur le jeu réel, matérialise désormais
+expérimentalement.
 
 Les chiffres donnent à cette expérience de coût un relief inattendu : le DQN
 paye ×31,6 en temps d'entraînement, ×87,7 en mémoire et ×18,8 en latence de
@@ -1265,23 +1266,61 @@ environnement capable de le mettre en défaut.
   algorithmiques sont établies sur un MDP déterministe à horizon court ; leur
   transfert à des dynamiques stochastiques n'est pas garanti (voir 7.3).
 
-### 7.2 Extension TrackMania : livrée mais non exécutée
+### 7.2 Extension TrackMania : exécutée — l'agent complète la piste
 
 L'extension deep RL vers TrackMania 2020 (`docs/TRACKMANIA.md`,
-`src/environments/trackmania_wrapper.py`, `scripts/train_trackmania.py`) est
-**livrée et testée, mais n'a pas été exécutée en conditions réelles** : elle
-exige une machine de jeu Windows avec TrackMania 2020 et le plugin OpenPlanet
-(qui ne tournent ni sous Linux ni en CI), le tout en temps réel.
-L'architecture a été conçue pour être validable sans le jeu : le wrapper ne
-dépend que d'une interface structurelle (`TMEnvProtocol`), jamais de `tmrl`
-directement, et a été testé unitairement sur un environnement factice en
-mémoire (`FakeTMEnv`) — aplatissement et normalisation des observations
-(vitesse + LIDAR) vers un espace continu `Box(-1, 1, (83,))`, consommé par un
-agent SAC de Stable-Baselines3. L'exécution de ce pipeline sur machine
-compatible ferait passer le projet d'un espace de 500 états discrets à un
-espace continu en temps réel, où chaque transition coûte du temps d'horloge et
-où l'efficacité échantillon, marginale sur Taxi, devient la contrainte
-dominante.
+`src/environments/trackmania_wrapper.py`, `scripts/train_trackmania.py`),
+livrée en 1.0.0 comme code testé hors jeu, a été **exécutée en conditions
+réelles** sur une machine Windows (TrackMania 2020 + OpenPlanet + `tmrl`,
+capture d'écran LIDAR à 20 Hz, manette virtuelle ViGEmBus). Résultat : après
+**750 000 pas d'environnement temps réel** (≈ 12 h de jeu effectif, SAC
+Stable-Baselines3 sur le wrapper `Box(-1, 1, (83,))`), l'agent **complète la
+piste `tmrl-test` dans 9 épisodes d'évaluation greedy sur 10, meilleur tour
+en 61,15 s** (médiane 67,7 s ; politique de référence tmrl : ~45,5 s). Le
+critère d'acceptation du backlog (T-2.3.3, « l'agent complète au moins un
+tour ») est atteint ; courbes F13/F14, journal des 1 573 épisodes et rapport
+d'évaluation versionnés dans `results/`.
+
+La campagne elle-même s'est révélée une leçon d'**horizon d'apprentissage** :
+après les 500 000 premiers pas sous le plafond d'épisode par défaut de tmrl
+(1 000 pas = 50 s), la politique roulait vite et proprement mais n'atteignait
+que ~60 % de la piste au moment de la troncature — elle n'avait donc **jamais
+observé ni la fin du circuit ni le bonus terminal (+100)** qu'elle était
+censée poursuivre, et optimisait uniquement la vitesse de progression locale.
+Le relèvement du plafond à 2 000 pas a suffi : **le tout premier épisode
+prolongé a franchi la ligne**, le taux d'arrivée est passé de 67 % à 97 % en
+250 000 pas supplémentaires (166 arrivées), et la courbe F13 exhibe la
+signature en deux marches (plateau de troncature à ~180, bande d'arrivée à
+~319,6 = progression maximale 219,6 + bonus 100). Deuxième leçon, de mesure :
+une récompense d'épisode supérieure à 100 ne signifie **pas** un tour complété
+(la progression seule dépasse largement 100) — seul le bonus terminal signalé
+par la télémétrie du jeu fait foi, ce que le script d'évaluation vérifie.
+
+**Analyse comparative Taxi-v3 / TrackMania** (T-2.3.4) — les deux
+environnements encadrent le spectre du RL model-free :
+
+| Propriété | Taxi-v3 | TrackMania 2020 |
+| --- | --- | --- |
+| États | 500, discrets, énumérables | continu, ℝ⁸³ (vitesse + 4×19 LIDAR + 2 actions passées) |
+| Actions | 6, discrètes | continues, [-1, 1]³ (gaz, frein, direction) |
+| Transition | simulée, ~µs, vectorisable | temps réel, 50 ms/pas, mono-instance, non accélérable |
+| Récompense | native (-1/-10/+20), éparse | progression dense le long d'une démonstration + bonus terminal |
+| Étalon | R\* = 8,05 par value iteration (modèle exact) | aucun modèle — critère comportemental (tour complété), référence externe ~45,5 s |
+| Reproductibilité | déterministe, seedable | jeu non déterministe, `--seed` ne fixe que SAC |
+| Méthode | Q-table (tabulaire) | SAC (réseaux 256×256, replay 1M) |
+| Coût d'un run | 143 263 pas ≈ secondes (QL au seuil) | 750 000 pas ≈ 12 h wall-clock |
+
+La comparaison prolonge H6 : sur Taxi, l'efficacité échantillon du deep RL
+était un luxe inutile (×31,6 en temps pour rien) ; sur TrackMania elle devient
+la **contrainte dominante** — chaque transition coûte 50 ms incompressibles,
+interdit toute vectorisation, et le replay buffer off-policy de SAC (chaque
+transition rejouée des dizaines de fois) est précisément ce qui rend le
+problème soluble en une nuit d'entraînement. Symétriquement, l'absence de
+modèle exact fait disparaître l'étalon R\* : là où Taxi permettait de mesurer
+la convergence contre l'optimum calculable, TrackMania ne laisse que des
+critères comportementaux (franchir la ligne) et des références externes. Les
+concepts (exploration/exploitation, γ, off-policy) traversent inchangés ; ce
+qui change d'échelle, c'est le prix de la donnée.
 
 ### 7.3 Variantes stochastiques de Taxi
 
@@ -1348,8 +1387,9 @@ chiffré par H6 (×31,6 en temps) ; l'environnement multi-passagers
 à 14 400 états montre que la tabulation encaisse un facteur ×28,8 d'états au
 prix d'un coût de convergence ×10,9 à ×13,2 au seuil retenu, avec 100 % de
 succès et de véritables tournées mutualisées ; et le pipeline TrackMania,
-livré et testé hors jeu, trace la frontière au-delà de laquelle la Q-table
-cède la place au réseau.
+désormais exécuté sur le jeu réel — 9 tours complétés sur 10 en évaluation,
+meilleur tour 61,15 s après 750 000 pas temps réel —, matérialise la
+frontière au-delà de laquelle la Q-table cède la place au réseau.
 
 La conclusion méthodologique est peut-être la plus durable : sur ce problème,
 le réglage des hyperparamètres a pesé davantage sur la vitesse de convergence

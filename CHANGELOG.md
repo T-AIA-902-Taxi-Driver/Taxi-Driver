@@ -4,6 +4,45 @@ Toutes les modifications notables apportées à ce projet sont documentées dans
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.1.0] - 2026-07-05
+
+### Added
+
+- **Campagne TrackMania exécutée sur le jeu réel** : 750 000 pas temps réel (SAC, LIDAR),
+  l'agent **complète la piste `tmrl-test` en 9/10 épisodes d'évaluation greedy, meilleur tour
+  61,15 s** (référence tmrl : ~45,5 s). Courbes F13/F14, journal d'épisodes
+  (`results/trackmania/monitor.csv`, 1 573 épisodes), rapport d'évaluation (`eval.json`),
+  modèle final `models/final/sac_trackmania_final.zip`
+- `configs/trackmania.yaml` : hyperparamètres SAC versionnés, alignés sur le pipeline de
+  référence tmrl (lr 3e-5, α fixe 0,01, γ 0,995, replay 1M) — l'ancien lr 3e-4 était 10-30×
+  trop élevé
+- `scripts/check_trackmania_setup.py` : validation agent-aléatoire du setup (espaces, timing
+  20 Hz par violations rtgym, baseline de récompense, NaN) + gestion du template de config
+  machine `configs/tmrl_config.json` (capture/diff/apply, secrets exclus)
+- `scripts/eval_trackmania.py` : évaluation greedy avec détection de tours (terminated +
+  bonus END_OF_TRACK sur le dernier pas)
+- `scripts/train_trackmania.py` : reprise (`--resume`, checkpoint + replay buffer tournant),
+  TensorBoard, sauvegarde sûre sur interruption, provenance `run_config.json`, cadence de
+  repli `--train-freq-episode`
+- Wrapper : validation des espaces à la construction (échec précoce si mauvais préréglage
+  tmrl), `wait()`/`close()`, retry sur échec transitoire d'attache ViGEmBus, mise au premier
+  plan automatique de la fenêtre de jeu (la manette virtuelle exige le focus)
+
+### Changed
+
+- Plafond d'épisode tmrl relevé de 1000 à 2000 pas (50 s → 100 s) : à 50 s une politique en
+  apprentissage n'atteignait que ~60 % de la piste et ne voyait jamais le bonus d'arrivée —
+  le premier épisode après le changement a complété la piste
+- `docs/TRACKMANIA.md` réécrit depuis l'installation réelle : **Club Access requis** (plugin
+  non signé vs mode signature OpenPlanet — la mention « édition Standard suffisante » était
+  obsolète), pilote ViGEmBus, ordre d'installation validé, sémantique de la récompense et
+  piège d'interprétation de `monitor.csv`, table de dépannage vécue
+
+### Fixed
+
+- `progress_bar=True` de SB3 exigeait `rich` (absent) : crash au lancement — `tensorboard`
+  et `rich` ajoutés à l'extra `trackmania`
+
 ## [1.0.0] - 2026-07-03
 
 ### Added

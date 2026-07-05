@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "taxi-driver"
-version = "0.1.0"
+version = "1.1.0"
 description = "Model-free episodic RL agents solving Gymnasium Taxi-v3 (Epitech T-AIA-902)"
 authors = ["T-AIA-902 Taxi-Driver team"]
 license = "MIT"
