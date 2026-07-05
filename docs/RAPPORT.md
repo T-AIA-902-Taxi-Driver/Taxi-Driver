@@ -1269,17 +1269,26 @@ environnement capable de le mettre en défaut.
 ### 7.2 Extension TrackMania : exécutée — l'agent complète la piste
 
 L'extension deep RL vers TrackMania 2020 (`docs/TRACKMANIA.md`,
-`src/environments/trackmania_wrapper.py`, `scripts/train_trackmania.py`),
+`src/environments/trackmania_wrapper.py`, `scripts/train_trackmania.py`,
+hyperparamètres versionnés dans `configs/trackmania.yaml`),
 livrée en 1.0.0 comme code testé hors jeu, a été **exécutée en conditions
 réelles** sur une machine Windows (TrackMania 2020 + OpenPlanet + `tmrl`,
 capture d'écran LIDAR à 20 Hz, manette virtuelle ViGEmBus). Résultat : après
 **750 000 pas d'environnement temps réel** (≈ 12 h de jeu effectif, SAC
 Stable-Baselines3 sur le wrapper `Box(-1, 1, (83,))`), l'agent **complète la
 piste `tmrl-test` dans 9 épisodes d'évaluation greedy sur 10, meilleur tour
-en 61,15 s** (médiane 67,7 s ; politique de référence tmrl : ~45,5 s). Le
-critère d'acceptation du backlog (T-2.3.3, « l'agent complète au moins un
-tour ») est atteint ; courbes F13/F14, journal des 1 573 épisodes et rapport
-d'évaluation versionnés dans `results/`.
+en 61,15 s** (médiane 67,7 s ; politique de référence tmrl : ~45,5 s). Les
+hyperparamètres SAC sont alignés sur le pipeline de référence de tmrl :
+lr 3·10⁻⁵ (le 3·10⁻⁴ initial, 10–30× au-dessus des valeurs éprouvées
+acteur/critique de tmrl, a été corrigé avant la campagne), γ = 0,995,
+τ = 0,005, coefficient d'entropie **fixe** α = 0,01, batch 256, replay 10⁶,
+5 000 pas d'exploration pure avant le premier gradient, et un pas de gradient
+CPU par pas d'environnement — cadence validée sans violation du budget temps
+réel de 50 ms. Le critère d'acceptation du backlog (T-2.3.3, « l'agent
+complète au moins un tour ») est atteint ; les artefacts sont versionnés :
+journal des 1 573 épisodes (`results/trackmania/monitor.csv`), rapport
+d'évaluation (`results/trackmania/eval.json`), modèle final
+(`models/final/sac_trackmania_final.zip`), courbes F13/F14 ci-dessous.
 
 La campagne elle-même s'est révélée une leçon d'**horizon d'apprentissage** :
 après les 500 000 premiers pas sous le plafond d'épisode par défaut de tmrl
@@ -1295,6 +1304,21 @@ signature en deux marches (plateau de troncature à ~180, bande d'arrivée à
 une récompense d'épisode supérieure à 100 ne signifie **pas** un tour complété
 (la progression seule dépasse largement 100) — seul le bonus terminal signalé
 par la télémétrie du jeu fait foi, ce que le script d'évaluation vérifie.
+
+![Courbe d'apprentissage TrackMania — récompense par épisode](../results/figures/F13_trackmania_reward.png)
+
+*Figure F13 — Récompense par épisode sur 750 000 pas temps réel. Les deux
+marches : décollage vers ~160 000 pas, plateau à ~180 imposé par le plafond
+d'épisode de 50 s (bande basse à ~144 : virage où la politique cale), puis
+saut vers la bande d'arrivée à ~319,6 (progression maximale 219,6 + bonus
++100) dès le relèvement du plafond à 100 s au pas 500 000.*
+
+![Longueur des épisodes TrackMania](../results/figures/F14_trackmania_longueur_episodes.png)
+
+*Figure F14 — Longueur des épisodes : l'agent survit de plus en plus loin sur
+la piste (croissance vers le plafond de troncature), puis les épisodes se
+terminent par l'arrivée elle-même après le relèvement du plafond — la durée
+d'épisode devient alors le temps au tour.*
 
 **Analyse comparative Taxi-v3 / TrackMania** (T-2.3.4) — les deux
 environnements encadrent le spectre du RL model-free :
