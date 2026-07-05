@@ -60,7 +60,7 @@ The project implements seven algorithms, compares them under a pre-registered ex
 
 **Extensions**
 - **Multi-passenger environment** (`--env multi`) — 2 passengers, 14,400 states (25 x 6² x 4²), with route-optimality analysis
-- **TrackMania 2020 deep-RL extension** — SAC via Stable-Baselines3 + `tmrl`; shippable but requires the machine running the game (see [docs/TRACKMANIA.md](docs/TRACKMANIA.md))
+- **TrackMania 2020 deep-RL extension** — SAC via Stable-Baselines3 + `tmrl`, **trained and evaluated on the real game**: 9/10 laps completed in greedy evaluation, best lap 61.15 s after 750k real-time steps (see [docs/TRACKMANIA.md](docs/TRACKMANIA.md))
 
 **Benchmarking & analysis**
 - Experiment campaign **E0–E7** (822 runs, ~4h30–5h30 on 6 cores), resumable and idempotent
@@ -165,10 +165,15 @@ Blocks E0–E6 run in parallel; E7 re-runs the head-to-head configurations seque
 
 ```bash
 poetry install -E trackmania
-python scripts/train_trackmania.py --timesteps 500000 --seed 42
+python scripts/check_trackmania_setup.py --steps 400          # validate the game setup
+python scripts/train_trackmania.py --config configs/trackmania.yaml --timesteps 500000 --seed 42
+python scripts/train_trackmania.py --resume --timesteps 250000  # continue a run
+python scripts/eval_trackmania.py --episodes 10               # greedy eval + lap detection
 ```
 
-Must run on the Windows machine hosting TrackMania 2020, OpenPlanet and `tmrl` (the script exits with actionable instructions when a game-machine dependency is missing). Setup, track and reward details: [docs/TRACKMANIA.md](docs/TRACKMANIA.md).
+Must run on the Windows machine hosting TrackMania 2020, OpenPlanet and `tmrl` (the scripts exit with actionable instructions when a game-machine dependency is missing). Setup, track, reward and troubleshooting details: [docs/TRACKMANIA.md](docs/TRACKMANIA.md).
+
+**Executed campaign (750k steps, SAC on LIDAR):** the agent **completes the `tmrl-test` track in 9/10 deterministic evaluation episodes, best lap 61.15 s** (tmrl's reference policy: ~45.5 s). Learning curves F13/F14 in `results/figures/`, episode log and evaluation report in `results/trackmania/`, final model in `models/final/sac_trackmania_final.zip`.
 
 ### Main `train` flags
 

@@ -1,0 +1,44 @@
+# TrackMania SAC hyperparameters (scripts/train_trackmania.py).
+# Precedence: script defaults < this file < CLI flags.
+#
+# Values are aligned with tmrl's reference SAC pipeline (the configuration that
+# demonstrably completes laps on the tmrl-test track), adapted to the
+# Stable-Baselines3 API. Each divergence is justified below.
+
+timesteps: 500000        # ~7.5-8 h wall-clock at the 20 Hz real-time control rate
+seed: 42
+
+# SB3 uses a single learning rate for actor, critics and entropy coefficient
+# (lr_schedule reassigns every optimizer at each update, so per-optimizer
+# overrides do not survive). tmrl uses LR_ACTOR=1e-5 / LR_CRITIC=5e-5;
+# 3e-5 is the geometric compromise. The previous 3e-4 was 10-30x too high.
+learning_rate: 3.0e-5
+
+buffer_size: 1000000     # tmrl MEMORY_SIZE; ~700 MB RAM for 83-dim float32 obs
+batch_size: 256          # = tmrl
+gamma: 0.995             # = tmrl
+tau: 0.005               # = tmrl POLYAK 0.995 (SB3 tau = 1 - polyak)
+
+# tmrl trains with a FIXED entropy coefficient (LEARN_ENTROPY_COEF=false,
+# ALPHA=0.01). SB3's default "auto" would tune alpha against target entropy
+# -dim(A)=-3, far from tmrl's -0.5; keep the proven fixed value.
+ent_coef: 0.01
+
+# Training cadence. train_freq=1/gradient_steps=1 interleaves one CPU gradient
+# step (~2-5 ms for this MLP) per 50 ms env step, well within the rtgym budget.
+# If the Phase-2 smoke run shows fps < ~18 or rtgym timeouts, retrain with
+# --train-freq-episode: updates then run in bursts between episodes, while
+# rtgym's wait_on_done holds the car off the real-time clock.
+train_freq: 1
+gradient_steps: 1
+
+# ~4 minutes of random exploration before the first gradient step. SB3's
+# default of 100 steps is meaningless for a real-time env and would overfit
+# a near-empty buffer.
+learning_starts: 5000
+
+net_arch: [256, 256]     # SB3 SAC default MLP; matches tmrl's LIDAR model scale
+
+checkpoint_every: 25000  # SAC .zip checkpoint cadence (small, no replay buffer)
+buffer_save_every: 100000  # replay-buffer snapshot cadence (single ~700 MB file)
+device: auto             # auto resolves to CPU on this machine (torch CPU wheel)
