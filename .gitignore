@@ -58,9 +58,6 @@ results/trackmania/*.pkl
 results/trackmania/*.log
 results/trackmania/*.pid
 
-# Generated on demand from docs/RAPPORT.md (Chrome headless print)
-docs/RAPPORT.pdf
-
 # Jupyter
 .ipynb_checkpoints/
 
