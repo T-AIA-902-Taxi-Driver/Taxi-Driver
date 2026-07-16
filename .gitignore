@@ -58,6 +58,10 @@ results/trackmania/*.pkl
 results/trackmania/*.log
 results/trackmania/*.pid
 
+# Exports Marp de la soutenance (make slides / slides-pdf)
+docs/SLIDES.html
+docs/SLIDES.pdf
+
 # Jupyter
 .ipynb_checkpoints/
 
