@@ -1,0 +1,121 @@
+{
+  "model": "models\\trackmania\\sac_trackmania_final.zip",
+  "deterministic": true,
+  "n_episodes": 10,
+  "n_laps": 9,
+  "best_lap_time_s": 61.150000000000006,
+  "mean_reward": 302.0009998040274,
+  "lap_bonus_threshold": 50.0,
+  "episodes": [
+    {
+      "episode": 0,
+      "reward": 319.5799993108958,
+      "length": 1466,
+      "duration_s": 73.3,
+      "wall_time_s": 74.0284141000011,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.20999908447266,
+      "lap": true
+    },
+    {
+      "episode": 1,
+      "reward": 319.610001668334,
+      "length": 1403,
+      "duration_s": 70.15,
+      "wall_time_s": 70.93819749998511,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.1500015258789,
+      "lap": true
+    },
+    {
+      "episode": 2,
+      "reward": 144.0600001066923,
+      "length": 871,
+      "duration_s": 43.550000000000004,
+      "wall_time_s": 44.28562429998419,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 0.0,
+      "lap": false
+    },
+    {
+      "episode": 3,
+      "reward": 319.5299983341247,
+      "length": 1332,
+      "duration_s": 66.60000000000001,
+      "wall_time_s": 67.3372670999961,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.16999816894531,
+      "lap": true
+    },
+    {
+      "episode": 4,
+      "reward": 319.5499971676618,
+      "length": 1467,
+      "duration_s": 73.35000000000001,
+      "wall_time_s": 74.08215850000852,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.19999694824219,
+      "lap": true
+    },
+    {
+      "episode": 5,
+      "reward": 319.489999756217,
+      "length": 1336,
+      "duration_s": 66.8,
+      "wall_time_s": 67.5317491000169,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.25,
+      "lap": true
+    },
+    {
+      "episode": 6,
+      "reward": 319.479999601841,
+      "length": 1343,
+      "duration_s": 67.15,
+      "wall_time_s": 67.88075179999578,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.13999938964844,
+      "lap": true
+    },
+    {
+      "episode": 7,
+      "reward": 319.5800025910139,
+      "length": 1374,
+      "duration_s": 68.7,
+      "wall_time_s": 69.44153270000243,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.19000244140625,
+      "lap": true
+    },
+    {
+      "episode": 8,
+      "reward": 319.6099978927523,
+      "length": 1223,
+      "duration_s": 61.150000000000006,
+      "wall_time_s": 61.88423739999416,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.23999786376953,
+      "lap": true
+    },
+    {
+      "episode": 9,
+      "reward": 319.520001610741,
+      "length": 1361,
+      "duration_s": 68.05,
+      "wall_time_s": 68.77591599998414,
+      "terminated": true,
+      "truncated": false,
+      "final_step_reward": 100.1500015258789,
+      "lap": true
+    }
+  ]
+}

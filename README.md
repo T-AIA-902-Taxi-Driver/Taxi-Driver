@@ -60,13 +60,13 @@ The project implements seven algorithms, compares them under a pre-registered ex
 
 **Extensions**
 - **Multi-passenger environment** (`--env multi`) — 2 passengers, 14,400 states (25 x 6² x 4²), with route-optimality analysis
-- **TrackMania 2020 deep-RL extension** — SAC via Stable-Baselines3 + `tmrl`; shippable but requires the machine running the game (see [docs/TRACKMANIA.md](docs/TRACKMANIA.md))
+- **TrackMania 2020 deep-RL extension** — SAC via Stable-Baselines3 + `tmrl`, **trained and evaluated on the real game**: 9/10 laps completed in greedy evaluation, best lap 61.15 s after 750k real-time steps (see [docs/TRACKMANIA.md](docs/TRACKMANIA.md))
 
 **Benchmarking & analysis**
 - Experiment campaign **E0–E7** (822 runs, ~4h30–5h30 on 6 cores), resumable and idempotent
 - Statistical pipeline: Welch t-test / Mann-Whitney U, Holm correction per hypothesis family, effect sizes (Hedges g, Cliff's δ)
 - Figure generation (learning curves, boxplots, grid heatmaps, Q-value heatmap, episode GIF) from raw results — no re-runs needed
-- 225 unit/integration tests (slow training tests behind a pytest marker), CI via GitHub Actions
+- 241 unit/integration tests (slow training tests behind a pytest marker), CI via GitHub Actions
 
 ## Getting Started
 
@@ -81,7 +81,7 @@ The project implements seven algorithms, compares them under a pre-registered ex
 git clone https://github.com/T-AIA-902-Taxi-Driver/Taxi-Driver.git
 cd Taxi-Driver
 poetry install                  # core project
-poetry install -E trackmania    # optional: + Stable-Baselines3 for the TrackMania extension
+poetry install -E trackmania    # optional: + SB3, TensorBoard, rich for the TrackMania extension
 ```
 
 > **Note on the Gymnasium pin:** `gymnasium` is pinned to `>=1.0,<1.3` because Taxi-v3 was removed in gymnasium 1.3.0 (replaced by Taxi-v4, which is identical with default parameters). The subject mandates Taxi-v3, hence the pin.
@@ -165,10 +165,15 @@ Blocks E0–E6 run in parallel; E7 re-runs the head-to-head configurations seque
 
 ```bash
 poetry install -E trackmania
-python scripts/train_trackmania.py --timesteps 500000 --seed 42
+python scripts/check_trackmania_setup.py --steps 400          # validate the game setup
+python scripts/train_trackmania.py --config configs/trackmania.yaml --timesteps 500000 --seed 42
+python scripts/train_trackmania.py --resume --timesteps 250000  # continue a run
+python scripts/eval_trackmania.py --episodes 10               # greedy eval + lap detection
 ```
 
-Must run on the Windows machine hosting TrackMania 2020, OpenPlanet and `tmrl` (the script exits with actionable instructions when a game-machine dependency is missing). Setup, track and reward details: [docs/TRACKMANIA.md](docs/TRACKMANIA.md).
+Must run on the Windows machine hosting TrackMania 2020, OpenPlanet and `tmrl` (the scripts exit with actionable instructions when a game-machine dependency is missing). Setup, track, reward and troubleshooting details: [docs/TRACKMANIA.md](docs/TRACKMANIA.md).
+
+**Executed campaign (750k steps, SAC on LIDAR):** the agent **completes the `tmrl-test` track in 9/10 deterministic evaluation episodes, best lap 61.15 s** (tmrl's reference policy: ~45.5 s). Learning curves F13/F14 in `results/figures/`, episode log and evaluation report in `results/trackmania/`, final model in `models/final/sac_trackmania_final.zip`.
 
 ### Main `train` flags
 
@@ -247,16 +252,20 @@ Taxi-Driver/
 │   └── utils/                     # Seeding helpers
 ├── scripts/
 │   ├── run_campaign.py            # Campaign driver, blocks E0-E7 (822 runs)
-│   ├── make_figures.py            # Figures F1-F12 from results/
+│   ├── make_figures.py            # Figures F1-F14 from results/
 │   ├── run_stats.py               # Hypothesis tests H1-H9
-│   └── train_trackmania.py        # SAC training on TrackMania (game machine only)
+│   ├── check_trackmania_setup.py  # Game-setup validation + tmrl config templating
+│   ├── train_trackmania.py        # SAC training on TrackMania (game machine only)
+│   └── eval_trackmania.py         # Greedy TrackMania eval + lap detection
 ├── configs/
 │   ├── default.yaml               # Commented reference of every field (user mode)
 │   ├── optimized.yaml             # Grid-search winner (time-limited mode)
-│   └── benchmark_sweep.yaml       # E1a grid definition for `benchmark`
-├── models/final/                  # Trained models for the 6 learners
-├── results/                       # aggregated/, figures/, raw/, r_star.json
-├── tests/                         # 225 unit & integration tests
+│   ├── benchmark_sweep.yaml       # E1a grid definition for `benchmark`
+│   ├── trackmania.yaml            # SAC hyperparameters (tmrl-aligned)
+│   └── tmrl_config.json           # Game-machine tmrl config template (secrets redacted)
+├── models/final/                  # Trained models: 6 Taxi learners + TrackMania SAC
+├── results/                       # aggregated/, figures/, raw/, trackmania/, r_star.json
+├── tests/                         # 241 unit & integration tests
 ├── docs/                          # Framing, architecture, protocol, report, TrackMania
 ├── pyproject.toml                 # Poetry config (deps, extras, console script, tooling)
 └── README.md

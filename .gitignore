@@ -50,6 +50,17 @@ results/*
 !results/aggregated/
 !results/figures/
 !results/r_star.json
+# TrackMania campaign record (small text files); TensorBoard events,
+# replay-buffer snapshots and raw console logs stay local
+!results/trackmania/
+results/trackmania/tb/
+results/trackmania/*.pkl
+results/trackmania/*.log
+results/trackmania/*.pid
+
+# Exports Marp de la soutenance (make slides / slides-pdf)
+docs/SLIDES.html
+docs/SLIDES.pdf
 
 # Jupyter
 .ipynb_checkpoints/

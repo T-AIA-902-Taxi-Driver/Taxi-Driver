@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "taxi-driver"
-version = "0.1.0"
+version = "1.1.0"
 description = "Model-free episodic RL agents solving Gymnasium Taxi-v3 (Epitech T-AIA-902)"
 authors = ["T-AIA-902 Taxi-Driver team"]
 license = "MIT"
@@ -24,11 +24,14 @@ imageio = ">=2.30"
 pygame = ">=2.1.3"
 torch = ">=2.2,<2.6"
 stable-baselines3 = { version = ">=2.4", optional = true }
+tensorboard = { version = ">=2.15", optional = true }
+rich = { version = ">=13", optional = true }
 
 [tool.poetry.extras]
 # TrackMania deep-RL extension (see docs/TRACKMANIA.md). `tmrl` itself must be installed
 # manually on the Windows machine running the game; it is not locked here.
-trackmania = ["stable-baselines3"]
+# tensorboard: SB3 training curves; rich: SB3 progress bar (learn(progress_bar=True)).
+trackmania = ["stable-baselines3", "tensorboard", "rich"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.4"
@@ -77,6 +80,8 @@ module = [
     "tmrl.*",
     "stable_baselines3.*",
     "gymnasium.envs.*",
+    "win32gui",
+    "win32con",
 ]
 ignore_missing_imports = true
 

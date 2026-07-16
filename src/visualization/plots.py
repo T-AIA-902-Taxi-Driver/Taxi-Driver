@@ -270,3 +270,44 @@ def sample_efficiency_plot(
     ax.legend(loc="lower right", fontsize=9)
     ax.grid(alpha=0.3, which="both")
     return _save(fig, out_path)
+
+
+def trackmania_learning_curve(
+    timesteps: list[float],
+    values: list[float],
+    out_path: str | Path,
+    window: int = 20,
+    ylabel: str = "Récompense par épisode",
+    title: str = "TrackMania — apprentissage SAC",
+) -> Path:
+    """Single-run learning curve over cumulative env steps (F13/F14).
+
+    The x axis is cumulative environment timesteps rather than the episode
+    index: TrackMania episodes have highly variable lengths (crashes end them
+    after a few steps, laps after hundreds), so the timestep axis is the one
+    on which sample efficiency reads correctly.
+
+    Args:
+        timesteps: Cumulative env steps at the end of each episode.
+        values: Per-episode metric (reward, length, ...), same length.
+        out_path: PNG destination.
+        window: Rolling-mean window (in episodes).
+        ylabel: Y-axis label.
+        title: Figure title.
+    """
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    x = np.asarray(timesteps, dtype=np.float64)
+    ax.scatter(x, values, s=6, alpha=0.25, color="tab:blue", label="épisodes")
+    ax.plot(
+        x,
+        rolling_mean(values, window),
+        color="tab:blue",
+        linewidth=1.6,
+        label=f"moyenne glissante ({window} épisodes)",
+    )
+    ax.set_xlabel("Pas d'environnement cumulés")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.legend(loc="upper left", fontsize=9)
+    ax.grid(alpha=0.3)
+    return _save(fig, out_path)

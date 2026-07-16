@@ -150,11 +150,11 @@ R\* = 8,05 · 12,95 pas · 100 % succès (MC : 87,3 %, 37,7 pas)
 
 # Extensions : multi-passagers (H9) & TrackMania
 
-![w:520](../results/figures/F12_multi_passagers.png)
+![w:460](../results/figures/F12_multi_passagers.png) ![w:460](../results/figures/F13_trackmania_reward.png)
 
 - **14 400 états** (facteur ×28,8) : QL **et** SARSA à 100 % de succès — 17,71 / 18,03 de reward, ~24 pas pour 2 courses (tournées mutualisées)
 - Coût de convergence ×10,9 à ×13,2 : croissance **sous-linéaire** ; SARSA légèrement meilleur en qualité (prudence : n = 10, exploratoire)
-- **TrackMania** : pipeline SAC + wrapper livré et testé hors jeu (non exécuté : requiert Windows + OpenPlanet)
+- **TrackMania** : SAC exécuté sur le jeu réel — **9/10 tours complétés en évaluation, meilleur tour 61,15 s** (750k pas temps réel, LIDAR ; réf. tmrl ~45,5 s) — courbe : plateau sous plafond 50 s, puis bande d'arrivée à ~319,6
 
 ---
 

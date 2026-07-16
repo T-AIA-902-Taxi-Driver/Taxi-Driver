@@ -15,6 +15,7 @@ environment on any machine, without the game.
 
 from __future__ import annotations
 
+import time
 from typing import Any, Final, Protocol, SupportsFloat
 
 import gymnasium as gym
@@ -26,6 +27,14 @@ SPEED_DIM: Final = 1
 LIDAR_SHAPE: Final = (4, 19)
 ACTION_DIM: Final = 3
 OBS_DIM: Final = SPEED_DIM + LIDAR_SHAPE[0] * LIDAR_SHAPE[1] + 2 * ACTION_DIM  # 83
+
+# tmrl plugs its virtual gamepad on the first reset. Windows tears down the
+# XInput child-device stack once the last pad unplugs, and the next first-plug
+# re-installs it — which can exceed ViGEm's attach timeout while the game loads
+# the CPU. The failure is transient: retrying the plug succeeds. These control
+# the retry loop in TrackManiaEnvWrapper.reset (tests shrink the delay).
+VIGEM_ATTACH_RETRIES: Final = 3
+VIGEM_RETRY_DELAY_S = 2.0
 
 
 class TMEnvProtocol(Protocol):
@@ -51,6 +60,43 @@ class TMEnvProtocol(Protocol):
         ...
 
 
+def validate_tmrl_spaces(observation_space: Any, action_space: Any) -> None:
+    """Fail fast when the underlying environment is not on the LIDAR preset.
+
+    The wrapper hard-assumes tmrl's ``TM20LIDAR`` interface. If the machine's
+    tmrl configuration selects another preset (``TM20IMAGES`` camera images,
+    ``TM20LIDARPROGRESS`` 5-component tuple, ...), every downstream shape
+    breaks; validating the declared spaces at construction time surfaces the
+    misconfiguration immediately with the exact fix, instead of failing on the
+    first observation.
+
+    Args:
+        observation_space: Declared observation space of the underlying env.
+        action_space: Declared action space of the underlying env.
+
+    Raises:
+        ValueError: If the spaces do not match the ``TM20LIDAR`` layout, with
+            the config change to apply.
+    """
+    expected_shapes = ((SPEED_DIM,), LIDAR_SHAPE, (ACTION_DIM,), (ACTION_DIM,))
+    hint = (
+        'Set "RTGYM_INTERFACE": "TM20LIDAR" in the "ENV" section of '
+        "%USERPROFILE%/TmrlData/config/config.json (see docs/TRACKMANIA.md)."
+    )
+    if not isinstance(observation_space, spaces.Tuple):
+        raise ValueError(
+            f"Expected a Tuple observation space (LIDAR preset), got "
+            f"{type(observation_space).__name__}. {hint}"
+        )
+    shapes = tuple(getattr(space, "shape", None) for space in observation_space.spaces)
+    if shapes != expected_shapes:
+        raise ValueError(f"Expected observation shapes {expected_shapes}, got {shapes}. {hint}")
+    if not isinstance(action_space, spaces.Box) or action_space.shape != (ACTION_DIM,):
+        raise ValueError(
+            f"Expected a Box(({ACTION_DIM},)) action space, got {action_space}. {hint}"
+        )
+
+
 class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
     """Flatten and normalize tmrl's tuple observations into a single ``Box``.
 
@@ -74,6 +120,7 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
 
     def __init__(self, env: TMEnvProtocol, max_speed: float = 1000.0, max_lidar: float = 400.0):
         super().__init__()
+        validate_tmrl_spaces(env.observation_space, env.action_space)
         self._env = env
         self._max_speed = max_speed
         self._max_lidar = max_lidar
@@ -85,6 +132,10 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
     ) -> tuple[NDArray[np.float32], dict[str, Any]]:
         """Reset the underlying environment and flatten its observation.
 
+        The virtual-gamepad plug that tmrl performs on its first reset can
+        fail transiently (see ``VIGEM_ATTACH_RETRIES``); that specific
+        assertion is retried, every other error propagates untouched.
+
         Args:
             seed: Optional seed forwarded to the underlying environment.
             options: Optional options dictionary forwarded as-is.
@@ -93,8 +144,20 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
             Tuple ``(flattened observation, info)``.
         """
         super().reset(seed=seed)
-        obs, info = self._env.reset(seed=seed, options=options)
-        return self._flatten(obs), info
+        last_error: AssertionError | None = None
+        for _ in range(VIGEM_ATTACH_RETRIES):
+            try:
+                obs, info = self._env.reset(seed=seed, options=options)
+                return self._flatten(obs), info
+            except AssertionError as exc:
+                if "ViGEmBus" not in str(exc):
+                    raise
+                last_error = exc
+                time.sleep(VIGEM_RETRY_DELAY_S)
+        raise RuntimeError(
+            f"Virtual gamepad failed to attach after {VIGEM_ATTACH_RETRIES} attempts. "
+            "Check that the ViGEmBus driver is installed and healthy (see docs/TRACKMANIA.md)."
+        ) from last_error
 
     def step(
         self, action: NDArray[np.float32]
@@ -112,6 +175,27 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
         clipped = np.clip(np.asarray(action, dtype=np.float32), -1.0, 1.0)
         obs, reward, terminated, truncated, info = self._env.step(clipped)
         return self._flatten(obs), reward, terminated, truncated, info
+
+    def wait(self) -> None:
+        """Release real-time control of the underlying environment.
+
+        rtgym keeps applying the last action in real time between ``step``
+        calls; its environments expose ``wait()`` to signal that the caller is
+        pausing (end of training, long computation) so the car is released
+        instead of replaying the last action forever. Environments without a
+        ``wait`` method (e.g. test fakes) make this a no-op.
+        """
+        waiter = getattr(self._env, "wait", None)
+        if waiter is None:
+            waiter = getattr(getattr(self._env, "unwrapped", self._env), "wait", None)
+        if callable(waiter):
+            waiter()
+
+    def close(self) -> None:
+        """Close the underlying environment if it supports closing."""
+        closer = getattr(self._env, "close", None)
+        if callable(closer):
+            closer()
 
     def _flatten(self, obs: tuple[Any, ...]) -> NDArray[np.float32]:
         """Concatenate and normalize a tmrl LIDAR tuple observation.
@@ -148,11 +232,35 @@ class TrackManiaEnvWrapper(gym.Env[NDArray[np.float32], NDArray[np.float32]]):
         return flat
 
 
+def _focus_game_window() -> None:
+    """Best-effort: bring the game window to the foreground before driving.
+
+    TrackMania only processes (virtual) gamepad input while its window has
+    focus; a run launched without anyone clicking the game sends respawn and
+    steering inputs into the void. Failure here is non-fatal (Windows may
+    refuse foreground changes): the caller is warned and can click the window.
+    """
+    try:
+        import win32con
+        import win32gui
+
+        hwnd = win32gui.FindWindow(None, "Trackmania")
+        if hwnd == 0:
+            return
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        win32gui.SetForegroundWindow(hwnd)
+        if win32gui.GetWindowText(win32gui.GetForegroundWindow()) != "Trackmania":
+            print("WARNING: could not focus the game window; click it before training.")
+    except Exception as exc:
+        print(f"WARNING: game-window focus failed ({exc}); click the game window manually.")
+
+
 def make_trackmania_env() -> TrackManiaEnvWrapper:
     """Build the wrapped TrackMania environment from a live tmrl instance.
 
     ``tmrl`` is imported lazily so that this module stays importable (and
-    testable) on machines without the game.
+    testable) on machines without the game. The game window is brought to the
+    foreground (gamepad input requires focus).
 
     Returns:
         The tmrl environment wrapped in :class:`TrackManiaEnvWrapper`.
@@ -168,4 +276,5 @@ def make_trackmania_env() -> TrackManiaEnvWrapper:
             "machine with TrackMania 2020, OpenPlanet and `pip install tmrl`. "
             "See docs/TRACKMANIA.md for the full setup guide."
         ) from exc
+    _focus_game_window()
     return TrackManiaEnvWrapper(tmrl.get_environment())

@@ -14,7 +14,7 @@ L'environnement Taxi-v3 est un problème classique de RL épisodique dans lequel
 - Proposer deux modes d'exécution : un mode utilisateur permettant le réglage d'hyperparamètres et un mode optimisé à temps limité.
 - Fournir un framework de benchmarking et de visualisation pour comparer les performances des agents.
 - En bonus, développer un environnement personnalisé avec 2 passagers.
-- En extension bonus, un agent DQN (Deep Q-Network) peut être implémenté pour démontrer le passage au deep RL. De plus, un environnement **TrackMania** peut être intégré comme extension avancée pour démontrer le deep RL sur un espace d'états continu (LIDAR/images) avec des algorithmes comme PPO ou SAC.
+- En extension bonus, un agent DQN (Deep Q-Network) démontre le passage au deep RL. De plus, l'environnement **TrackMania 2020** est intégré comme extension avancée : un agent SAC (Stable-Baselines3) y est entraîné sur le jeu réel, sur un espace d'états continu (LIDAR) — voir `docs/TRACKMANIA.md` pour l'architecture détaillée et les résultats.
 
 ### Stack Technologique (résumé)
 
@@ -161,7 +161,7 @@ Taxi-Driver/
 
 **`src/environments/multi_passenger_env.py`** : Environnement personnalisé héritant de `gymnasium.Env` qui étend Taxi-v3 pour gérer deux passagers simultanément. L'espace d'états et la logique de récompenses sont adaptés pour refléter la complexité accrue du problème multi-passagers.
 
-**`src/environments/trackmania_wrapper.py`** : (Extension bonus) Wrapper autour de l'environnement TrackMania via la bibliothèque `tmrl`, standardisant l'interface Gymnasium pour permettre l'entraînement d'agents deep RL (PPO, SAC via Stable-Baselines3). Fournit des observations sous forme de vecteurs LIDAR (distances aux murs du circuit) et un espace d'actions continu (accélération, direction). Permet la comparaison directe entre RL tabulaire (Taxi-v3) et deep RL (TrackMania).
+**`src/environments/trackmania_wrapper.py`** : (Extension bonus) Wrapper autour de l'environnement temps réel TrackMania 2020 via la bibliothèque `tmrl`, standardisant l'interface Gymnasium pour l'agent SAC (Stable-Baselines3). Aplati et normalise les observations LIDAR (vitesse + 4×19 faisceaux + 2 actions passées → `Box(-1, 1, (83,))`), valide le préréglage tmrl à la construction, gère `wait()`/`close()` du flux temps réel, les échecs transitoires d'attache de la manette virtuelle et la mise au premier plan de la fenêtre de jeu. Permet la comparaison directe entre RL tabulaire (Taxi-v3) et deep RL (TrackMania) — voir `docs/TRACKMANIA.md`.
 
 **`src/training/trainer.py`** : Pipeline d'entraînement générique qui orchestre la boucle épisodique : pour chaque épisode, il réinitialise l'environnement, exécute la boucle pas-à-pas (action, transition, apprentissage), enregistre les métriques et gère les callbacks. Il est agnostique vis-à-vis de l'agent utilisé grâce au pattern Strategy.
 
